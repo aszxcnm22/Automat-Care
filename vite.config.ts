@@ -20,12 +20,20 @@ export default defineConfig({
     },
   },
 
+  // ใช้ตอน dev (npm run dev)
   server: {
     port: 5173,
     open: true,
+    allowedHosts: [
+      'automat-care.onrender.com',
+    ],
   },
 
+  // ใช้ตอน production บน Render (vite preview)
   preview: {
     port: 4173,
+    allowedHosts: [
+      'automat-care.onrender.com',
+    ],
   },
 })
