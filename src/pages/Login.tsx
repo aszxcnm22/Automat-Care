@@ -3,18 +3,48 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Eye, EyeOff, Github, Facebook } from 'lucide-react';
 import Background from '../components/Background';
+import { useAuth, UserRole } from '../context/AuthContext';
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleLogin = (e: FormEvent) => {
     e.preventDefault();
-    // Simulate login and save email
-    localStorage.setItem('userEmail', email);
-    navigate('/home');
+    const success = login(email, password);
+    if (success) {
+        navigate('/tickets');
+    } else {
+        alert('Invalid email or password');
+    }
+  };
+
+  const handleQuickLogin = (role: UserRole) => {
+    let email = '';
+    let password = '';
+    
+    switch (role) {
+        case 'Admin':
+            email = 'admin@system.com';
+            password = 'admin123';
+            break;
+        case 'ORG Admin':
+            email = 'orgadmin@globaltech.com';
+            password = 'orgadmin123';
+            break;
+        case 'Member':
+            email = 'member@globaltech.com';
+            password = 'member123';
+            break;
+    }
+    
+    const success = login(email, password);
+    if (success) {
+        navigate('/tickets');
+    }
   };
 
   return (

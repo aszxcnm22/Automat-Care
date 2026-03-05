@@ -1,14 +1,24 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { BarChart3, Activity, Download } from 'lucide-react';
 import { useIssues } from '../context/IssueContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function Dashboard() {
   const { issues } = useIssues();
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
-  const openIssues = issues.filter(i => i.status === 'Open').length;
-  const inProgressIssues = issues.filter(i => i.status === 'In Progress').length;
-  const resolvedIssues = issues.filter(i => i.status === 'Resolved').length;
+  useEffect(() => {
+    if (user && user.role !== 'Admin') {
+        navigate('/tickets');
+    }
+  }, [user, navigate]);
+
+  if (user?.role !== 'Admin') {
+      return null; // Or a loading spinner
+  }
 
   const generateCSV = (headers: string[], rows: any[][], fileName: string) => {
     const csvContent =
@@ -35,7 +45,6 @@ export default function Dashboard() {
       issue.id,
       issue.title,
       issue.description,
-      issue.priority,
       issue.date
     ]);
 
@@ -45,9 +54,6 @@ export default function Dashboard() {
   const downloadSummary = () => {
     const headers = ['Metric', 'Count'];
     const rows = [
-      ['Open Issues', openIssues],
-      ['In Progress Issues', inProgressIssues],
-      ['Resolved Issues', resolvedIssues],
       ['Total Issues', issues.length],
     ];
 
@@ -62,7 +68,7 @@ export default function Dashboard() {
             Dashboard
           </h1>
           <p className="text-slate-500 text-sm mt-1">
-            Overview of the system and status of all issues
+            Overview of the system and all issues
           </p>
         </div>
 

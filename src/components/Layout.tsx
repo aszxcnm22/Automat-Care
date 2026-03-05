@@ -3,12 +3,14 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutGrid, Ticket, User, LogOut as LogOutIcon, LogOut, Menu, X, ShieldAlert, Settings, Home as HomeIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useIssues } from '../context/IssueContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { userProfile } = useIssues();
+  const { user } = useAuth();
 
   const handleLogout = () => {
     localStorage.removeItem('userEmail');
@@ -57,6 +59,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <span className="font-medium">Home</span>
             </motion.div>
           </Link>
+          {user?.role === 'Admin' && (
           <Link to="/dashboard">
             <motion.div 
               whileHover={{ scale: 1.02 }}
@@ -67,6 +70,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <span className="font-medium">Dashboard</span>
             </motion.div>
           </Link>
+          )}
           <Link to="/tickets">
             <motion.div 
               whileHover={{ scale: 1.02 }}
@@ -171,6 +175,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   <HomeIcon size={20} className={isActive('/home') ? 'text-white' : 'text-slate-500'} />
                   <span className="font-medium">Home</span>
                 </Link>
+                {user?.role === 'Admin' && (
                 <Link 
                   to="/dashboard" 
                   onClick={() => setIsMobileMenuOpen(false)}
@@ -179,6 +184,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   <LayoutGrid size={20} className={isActive('/dashboard') ? 'text-white' : 'text-slate-500'} />
                   <span className="font-medium">Dashboard</span>
                 </Link>
+                )}
                 <Link 
                   to="/tickets" 
                   onClick={() => setIsMobileMenuOpen(false)}

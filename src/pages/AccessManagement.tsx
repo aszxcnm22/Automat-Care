@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Plus, Shield, Users, UserCheck, MoreVertical, Edit2, Trash2 } from 'lucide-react';
+import { Search, Plus, Shield, Users, UserCheck, MoreVertical, Edit2, Trash2, ShieldCheck } from 'lucide-react';
 import Layout from '../components/Layout';
+import { useAuth } from '../context/AuthContext';
 
 type UserRole = string;
 
@@ -18,6 +19,7 @@ interface AccessGroup {
   id: string;
   name: string;
   description: string;
+  emailDomain?: string;
   memberCount: number;
   createdAt: string;
   memberIds: string[];
@@ -34,7 +36,7 @@ interface AccessRole {
 }
 
 const mockUsers: AccessUser[] = [
-  { id: 'USR-001', name: 'Mr. A', email: 'email', role: 'Admin', group: 'Global Tech Holdings' },
+  { id: 'USR-001', name: 'Mr. A', email: 'email', role: 'Admin', group: 'Global Tech Holdings Company' },
   { id: 'USR-002', name: 'Mr. B', email: 'email', role: 'Member', group: 'Green Energy Group' },
   { id: 'USR-003', name: 'Mr. C', email: 'email', role: 'Member', group: 'Retail Giant Corp' },
 ];
@@ -42,8 +44,9 @@ const mockUsers: AccessUser[] = [
 const mockGroups: AccessGroup[] = [
   { 
     id: 'GRP-001', 
-    name: 'Global Tech Holdings', 
+    name: 'Global Tech Holdings Company', 
     description: 'ศูนย์รวมนวัตกรรมซอฟต์แวร์และการพัฒนา AI สำหรับองค์กรในระดับสากล', 
+    emailDomain: 'globaltech.com',
     memberCount: 1, 
     createdAt: '2026-01-15', 
     memberIds: ['USR-001'],
@@ -55,17 +58,27 @@ const mockGroups: AccessGroup[] = [
     id: 'GRP-002', 
     name: 'Green Energy Group', 
     description: 'กลุ่มธุรกิจพลังงานสะอาด มุ่งเน้นการผลิตโซลาร์เซลล์และพลังงานลมเพื่อความยั่งยืน', 
+    emailDomain: 'greenenergy.com',
     memberCount: 1, 
     createdAt: '2026-01-20', 
-    memberIds: ['USR-002'] 
+    memberIds: ['USR-002'],
+    history: [
+      { action: 'Created', user: 'System Admin', date: '2026-01-20' },
+      { action: 'Joined', user: 'Mr. B', date: '2026-01-20' }
+    ]
   },
   { 
     id: 'GRP-003', 
     name: 'Retail Giant Corp', 
     description: 'ผู้นำด้านค้าปลีกและอุปโภคบริโภค ครอบคลุมห้างสรรพสินค้าและร้านสะดวกซื้อทั่วประเทศ', 
+    emailDomain: 'retailgiant.com',
     memberCount: 1, 
     createdAt: '2026-02-01', 
-    memberIds: ['USR-002'] 
+    memberIds: ['USR-002'],
+    history: [
+      { action: 'Created', user: 'System Admin', date: '2026-02-01' },
+      { action: 'Joined', user: 'Mr. B', date: '2026-02-01' }
+    ]
   },
 ];
 
@@ -77,11 +90,52 @@ const mockRoles: AccessRole[] = [
 ];
 
 export default function AccessManagement() {
+  const { user: currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState<'Access Rules' | 'Roles'>('Access Rules');
   const [activeSubTab, setActiveSubTab] = useState<'All' | 'Groups' | 'Users'>('Users');
-  const [users, setUsers] = useState<AccessUser[]>(mockUsers);
-  const [groups, setGroups] = useState<AccessGroup[]>(mockGroups);
-  const [roles, setRoles] = useState<AccessRole[]>(mockRoles);
+  const [users, setUsers] = useState<AccessUser[]>(() => {
+    const saved = localStorage.getItem('access_users');
+    return saved ? JSON.parse(saved) : mockUsers;
+  });
+  const [groups, setGroups] = useState<AccessGroup[]>(() => {
+    const saved = localStorage.getItem('access_groups');
+    return saved ? JSON.parse(saved) : mockGroups;
+  });
+  const [roles, setRoles] = useState<AccessRole[]>(() => {
+    const saved = localStorage.getItem('access_roles');
+    return saved ? JSON.parse(saved) : mockRoles;
+  });
+
+  // Persist state changes to localStorage
+  useEffect(() => {
+    localStorage.setItem('access_users', JSON.stringify(users));
+  }, [users]);
+
+  useEffect(() => {
+    localStorage.setItem('access_groups', JSON.stringify(groups));
+  }, [groups]);
+
+  useEffect(() => {
+    localStorage.setItem('access_roles', JSON.stringify(roles));
+  }, [roles]);
+
+  // Listen for changes in other tabs
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'access_users' && e.newValue) {
+        setUsers(JSON.parse(e.newValue));
+      }
+      if (e.key === 'access_groups' && e.newValue) {
+        setGroups(JSON.parse(e.newValue));
+      }
+      if (e.key === 'access_roles' && e.newValue) {
+        setRoles(JSON.parse(e.newValue));
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
   const [searchTerm, setSearchTerm] = useState('');
   
   // Filters
@@ -104,7 +158,24 @@ export default function AccessManagement() {
   const [editingGroup, setEditingGroup] = useState<AccessGroup | null>(null);
   const [deletingGroup, setDeletingGroup] = useState<AccessGroup | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<AccessGroup | null>(null);
-  const [newGroup, setNewGroup] = useState<Partial<AccessGroup>>({ name: '', description: '', memberIds: [] });
+  const [deletingMember, setDeletingMember] = useState<AccessUser | null>(null);
+  const [newGroup, setNewGroup] = useState<Partial<AccessGroup>>({ name: '', description: '', emailDomain: '', memberIds: [] });
+
+  const handleRemoveMember = () => {
+    if (!selectedGroup || !deletingMember) return;
+
+    const updatedGroup = {
+        ...selectedGroup,
+        memberIds: selectedGroup.memberIds.filter(id => id !== deletingMember.id),
+        memberCount: selectedGroup.memberCount - 1,
+        history: [...(selectedGroup.history || []), { action: 'Removed', user: deletingMember.name, date: new Date().toISOString().split('T')[0] }]
+    };
+    setGroups(groups.map(g => g.id === selectedGroup.id ? updatedGroup : g));
+    setSelectedGroup(updatedGroup);
+    // Also update user object to remove group name
+    setUsers(users.map(u => u.id === deletingMember.id ? { ...u, group: '' } : u));
+    setDeletingMember(null);
+  };
 
   const permissionCategories = [
     { name: 'General', permissions: ['All', 'Read', 'Write', 'Delete'] },
@@ -123,6 +194,12 @@ export default function AccessManagement() {
     selectedUserIds: []
   });
 
+  useEffect(() => {
+    if (isAddingUser && currentUser?.role === 'ORG Admin' && currentUser.group) {
+        setNewUser(prev => ({ ...prev, group: currentUser.group }));
+    }
+  }, [isAddingUser, currentUser]);
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -132,18 +209,42 @@ export default function AccessManagement() {
     const matchesRole = filterRole === 'All' || user.role === filterRole;
     const matchesGroup = filterGroup === 'All' || user.group === filterGroup;
 
-    return matchesSearch && matchesRole && matchesGroup;
+    // Role-based filtering
+    let matchesAccess = true;
+    if (currentUser?.role === 'ORG Admin' || currentUser?.role === 'Member') {
+        matchesAccess = user.group === currentUser.group;
+    }
+
+    return matchesSearch && matchesRole && matchesGroup && matchesAccess;
   });
 
-  const filteredGroups = groups.filter(group => 
-    group.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    group.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredGroups = groups.filter(group => {
+    const matchesSearch = 
+        group.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        group.description.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Role-based filtering
+    let matchesAccess = true;
+    if (currentUser?.role === 'ORG Admin' || currentUser?.role === 'Member') {
+        // They shouldn't see groups tab anyway, but just in case
+        matchesAccess = false; 
+    }
+    return matchesSearch && matchesAccess;
+  });
 
-  const filteredRoles = roles.filter(role => 
-    role.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    role.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredRoles = roles.filter(role => {
+    const matchesSearch = 
+        role.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        role.description.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Role-based filtering
+    let matchesAccess = true;
+    if (currentUser?.role === 'ORG Admin' || currentUser?.role === 'Member') {
+        // They shouldn't see roles tab anyway
+        matchesAccess = false;
+    }
+    return matchesSearch && matchesAccess;
+  });
 
   const container = {
     hidden: { opacity: 0 },
@@ -249,9 +350,13 @@ export default function AccessManagement() {
         id: `GRP-${String(groups.length + 1).padStart(3, '0')}`,
         name: newGroup.name,
         description: newGroup.description || '',
+        emailDomain: newGroup.emailDomain || '',
         memberCount: newGroup.memberIds?.length || 0,
         memberIds: newGroup.memberIds || [],
-        createdAt: new Date().toISOString().split('T')[0]
+        createdAt: new Date().toISOString().split('T')[0],
+        history: [
+          { action: 'Created', user: 'System Admin', date: new Date().toISOString().split('T')[0] }
+        ]
       };
       setGroups([...groups, groupToAdd]);
 
@@ -264,7 +369,7 @@ export default function AccessManagement() {
       }
 
       setIsAddingGroup(false);
-      setNewGroup({ name: '', description: '', memberIds: [] });
+      setNewGroup({ name: '', description: '', emailDomain: '', memberIds: [] });
     }
   };
 
@@ -433,6 +538,7 @@ export default function AccessManagement() {
                 New Group
               </button>
             ) : (
+              currentUser?.role !== 'Member' && (
               <button 
                 onClick={() => setIsAddingUser(true)}
                 className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-2.5 rounded-xl font-medium transition-all duration-200 active:scale-95 shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 whitespace-nowrap"
@@ -440,6 +546,7 @@ export default function AccessManagement() {
                 <Plus size={18} />
                 Add User
               </button>
+              )
             )
           ) : (
             <button 
@@ -466,6 +573,7 @@ export default function AccessManagement() {
             <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-600 to-indigo-600" />
           )}
         </button>
+        {currentUser?.role === 'Admin' && (
         <button
           onClick={() => setActiveTab('Roles')}
           className={`pb-4 text-sm font-semibold transition-all duration-200 active:scale-95 relative ${
@@ -477,13 +585,19 @@ export default function AccessManagement() {
             <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-600 to-indigo-600" />
           )}
         </button>
+        )}
       </div>
 
       {activeTab === 'Access Rules' ? (
         <>
           {/* Sub Tabs */}
           <div className="flex items-center gap-4 mb-6">
-            {(['All', 'Groups', 'Users'] as const).map((tab) => (
+            {(['All', 'Groups', 'Users'] as const).filter(tab => {
+                if (currentUser?.role === 'ORG Admin' || currentUser?.role === 'Member') {
+                    return tab === 'Users';
+                }
+                return true;
+            }).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveSubTab(tab)}
@@ -542,47 +656,74 @@ export default function AccessManagement() {
               variants={container}
               initial="hidden"
               animate="show"
-              className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
             >
-              <motion.div 
-                variants={item}
-                whileHover={{ scale: 1.02, translateY: -5 }}
-                className="bg-white/80 backdrop-blur-sm p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 flex items-center gap-4 group"
-              >
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center text-blue-600 shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-inner">
-                  <Users size={24} />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-500">Total Users</p>
-                  <p className="text-2xl font-bold text-slate-900">{users.length}</p>
-                </div>
-              </motion.div>
-              <motion.div 
-                variants={item}
-                whileHover={{ scale: 1.02, translateY: -5 }}
-                className="bg-white/80 backdrop-blur-sm p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 flex items-center gap-4 group"
-              >
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-50 to-pink-100 flex items-center justify-center text-purple-600 shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-inner">
-                  <Shield size={24} />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-500">Admin</p>
-                  <p className="text-2xl font-bold text-slate-900">{users.filter(u => u.role === 'Admin').length}</p>
-                </div>
-              </motion.div>
-              <motion.div 
-                variants={item}
-                whileHover={{ scale: 1.02, translateY: -5 }}
-                className="bg-white/80 backdrop-blur-sm p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 flex items-center gap-4 group"
-              >
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-600 shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-inner">
-                  <UserCheck size={24} />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-500">Member</p>
-                  <p className="text-2xl font-bold text-slate-900">{users.filter(u => u.role === 'Member').length}</p>
-                </div>
-              </motion.div>
+              {(() => {
+                const scopeUsers = users.filter(user => {
+                  if (currentUser?.role === 'Admin') return true;
+                  if (currentUser?.role === 'ORG Admin' || currentUser?.role === 'Member') {
+                    return user.group === currentUser.group;
+                  }
+                  return false;
+                });
+
+                return (
+                  <>
+                    <motion.div 
+                      variants={item}
+                      whileHover={{ scale: 1.02, translateY: -5 }}
+                      className="bg-white/80 backdrop-blur-sm p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 flex items-center gap-4 group"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center text-blue-600 shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-inner">
+                        <Users size={24} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-slate-500">Total Users</p>
+                        <p className="text-2xl font-bold text-slate-900">{scopeUsers.length}</p>
+                      </div>
+                    </motion.div>
+                    <motion.div 
+                      variants={item}
+                      whileHover={{ scale: 1.02, translateY: -5 }}
+                      className="bg-white/80 backdrop-blur-sm p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 flex items-center gap-4 group"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-50 to-pink-100 flex items-center justify-center text-purple-600 shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-inner">
+                        <Shield size={24} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-slate-500">Admin</p>
+                        <p className="text-2xl font-bold text-slate-900">{scopeUsers.filter(u => u.role === 'Admin').length}</p>
+                      </div>
+                    </motion.div>
+                    <motion.div 
+                      variants={item}
+                      whileHover={{ scale: 1.02, translateY: -5 }}
+                      className="bg-white/80 backdrop-blur-sm p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 flex items-center gap-4 group"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-50 to-amber-100 flex items-center justify-center text-orange-600 shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-inner">
+                        <ShieldCheck size={24} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-slate-500">ORG Admin</p>
+                        <p className="text-2xl font-bold text-slate-900">{scopeUsers.filter(u => u.role === 'ORG Admin').length}</p>
+                      </div>
+                    </motion.div>
+                    <motion.div 
+                      variants={item}
+                      whileHover={{ scale: 1.02, translateY: -5 }}
+                      className="bg-white/80 backdrop-blur-sm p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 flex items-center gap-4 group"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-600 shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-inner">
+                        <UserCheck size={24} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-slate-500">Member</p>
+                        <p className="text-2xl font-bold text-slate-900">{scopeUsers.filter(u => u.role === 'Member').length}</p>
+                      </div>
+                    </motion.div>
+                  </>
+                );
+              })()}
             </motion.div>
           )}
 
@@ -593,7 +734,7 @@ export default function AccessManagement() {
                 <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/50">
                   <h2 className="font-semibold text-gray-900 flex items-center gap-2">
                     <Users size={18} className="text-blue-600" />
-                    Users ({filteredUsers.length})
+                    User List
                   </h2>
                 </div>
                 <div className="overflow-x-auto">
@@ -608,6 +749,7 @@ export default function AccessManagement() {
                       </tr>
                     </thead>
                     <motion.tbody 
+                      key={filteredUsers.slice(0, 5).map(u => u.id).join(',')}
                       variants={container}
                       initial="hidden"
                       animate="show"
@@ -665,6 +807,7 @@ export default function AccessManagement() {
                       </tr>
                     </thead>
                     <motion.tbody 
+                      key={filteredGroups.slice(0, 5).map(g => g.id).join(',')}
                       variants={container}
                       initial="hidden"
                       animate="show"
@@ -709,13 +852,14 @@ export default function AccessManagement() {
                     <thead className="bg-gray-50 text-gray-500 border-b border-gray-200">
                       <tr>
                         <th className="px-6 py-4 font-medium">User</th>
-                        <th className="px-6 py-4 font-medium">Role</th>
+                        {currentUser?.role !== 'Member' && <th className="px-6 py-4 font-medium">Role</th>}
                         <th className="px-6 py-4 font-medium">Group</th>
                         <th className="px-6 py-4 font-medium">Email</th>
-                        <th className="px-6 py-4 font-medium text-right">Action</th>
+                        {currentUser?.role !== 'Member' && <th className="px-6 py-4 font-medium text-right">Action</th>}
                       </tr>
                     </thead>
                     <motion.tbody 
+                      key={filteredUsers.map(u => u.id).join(',')}
                       variants={container}
                       initial="hidden"
                       animate="show"
@@ -737,25 +881,33 @@ export default function AccessManagement() {
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4">{getRoleBadge(user.role)}</td>
+                          {currentUser?.role !== 'Member' && <td className="px-6 py-4">{getRoleBadge(user.role)}</td>}
                           <td className="px-6 py-4 text-gray-900">{user.group}</td>
                           <td className="px-6 py-4 text-gray-500">{user.email}</td>
+                          {currentUser?.role !== 'Member' && (
                           <td className="px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-2">
+                              {/* ORG Admin cannot edit Admin */}
+                              {!(currentUser?.role === 'ORG Admin' && user.role === 'Admin') && (
                               <button 
                                 onClick={() => setEditingUser(user)}
                                 className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 active:scale-90"
                               >
                                 <Edit2 size={16} />
                               </button>
+                              )}
+                              {/* Only Admin can delete users */}
+                              {currentUser?.role === 'Admin' && (
                               <button 
                                 onClick={() => setDeletingUser(user)}
                                 className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 active:scale-90"
                               >
                                 <Trash2 size={16} />
                               </button>
+                              )}
                             </div>
                           </td>
+                          )}
                         </motion.tr>
                       ))}
                       {filteredUsers.length === 0 && (
@@ -795,6 +947,11 @@ export default function AccessManagement() {
                     <div>
                       <h2 className="text-2xl font-bold text-gray-900 mb-2">{selectedGroup.name}</h2>
                       <p className="text-gray-500">{selectedGroup.description}</p>
+                      {selectedGroup.emailDomain && (
+                        <p className="text-sm text-blue-600 mt-1 flex items-center gap-1">
+                          <span className="font-medium">Domain:</span> {selectedGroup.emailDomain}
+                        </p>
+                      )}
                     </div>
                     <div className="text-right">
                       <div className="text-3xl font-bold text-blue-600">{selectedGroup.memberCount}</div>
@@ -836,22 +993,11 @@ export default function AccessManagement() {
                             </td>
                             <td className="px-6 py-4 text-right">
                               <button 
-                                onClick={() => {
-                                  // Remove user from group
-                                  const updatedGroup = {
-                                    ...selectedGroup,
-                                    memberIds: selectedGroup.memberIds.filter(id => id !== member.id),
-                                    memberCount: selectedGroup.memberCount - 1,
-                                    history: [...(selectedGroup.history || []), { action: 'Removed', user: member.name, date: new Date().toISOString().split('T')[0] }]
-                                  };
-                                  setGroups(groups.map(g => g.id === selectedGroup.id ? updatedGroup : g));
-                                  setSelectedGroup(updatedGroup);
-                                  // Also update user object to remove group name
-                                  setUsers(users.map(u => u.id === member.id ? { ...u, group: '' } : u));
-                                }}
-                                className="text-red-600 hover:text-red-800 font-medium text-xs"
+                                onClick={() => setDeletingMember(member)}
+                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 active:scale-90"
+                                title="Remove member"
                               >
-                                Remove
+                                <Trash2 size={16} />
                               </button>
                             </td>
                           </tr>
@@ -892,6 +1038,7 @@ export default function AccessManagement() {
                     <tr>
                       <th className="px-6 py-4 font-medium">Group Name</th>
                       <th className="px-6 py-4 font-medium">Description</th>
+                      <th className="px-6 py-4 font-medium">Domain</th>
                       <th className="px-6 py-4 font-medium">Member Count</th>
                       <th className="px-6 py-4 font-medium text-right">Actions</th>
                     </tr>
@@ -912,6 +1059,7 @@ export default function AccessManagement() {
                       >
                         <td className="px-6 py-4 font-medium text-gray-900">{group.name}</td>
                         <td className="px-6 py-4 text-gray-500 text-xs">{group.description}</td>
+                        <td className="px-6 py-4 text-gray-500 text-xs">{group.emailDomain || '-'}</td>
                         <td className="px-6 py-4">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
                             {group.memberCount} คน
@@ -1070,7 +1218,14 @@ export default function AccessManagement() {
                     onChange={(e) => setEditingUser({...editingUser, role: e.target.value as UserRole})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                   >
-                    {roles.map(role => (
+                    {roles
+                        .filter(role => {
+                            if (currentUser?.role === 'ORG Admin') {
+                                return ['ORG Admin', 'ORG Member', 'GUEST'].includes(role.name);
+                            }
+                            return true;
+                        })
+                        .map(role => (
                       <option key={role.id} value={role.name}>{role.name}</option>
                     ))}
                   </select>
@@ -1082,12 +1237,21 @@ export default function AccessManagement() {
                       value={editingUser.group}
                       onChange={(e) => setEditingUser({...editingUser, group: e.target.value})}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                      disabled={currentUser?.role === 'ORG Admin'}
                     >
                       <option value="">Select Group</option>
-                      {groups.map(g => (
+                      {groups
+                        .filter(g => {
+                            if (currentUser?.role === 'ORG Admin') {
+                                return g.name === currentUser.group;
+                            }
+                            return true;
+                        })
+                        .map(g => (
                         <option key={g.id} value={g.name}>{g.name}</option>
                       ))}
                     </select>
+                    {currentUser?.role !== 'ORG Admin' && (
                     <button
                       type="button"
                       onClick={() => {
@@ -1100,6 +1264,7 @@ export default function AccessManagement() {
                     >
                       <Plus size={18} />
                     </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1182,7 +1347,14 @@ export default function AccessManagement() {
                     onChange={(e) => setNewUser({...newUser, role: e.target.value as UserRole})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                   >
-                    {roles.map(role => (
+                    {roles
+                        .filter(role => {
+                            if (currentUser?.role === 'ORG Admin') {
+                                return ['ORG Admin', 'ORG Member', 'GUEST'].includes(role.name);
+                            }
+                            return true;
+                        })
+                        .map(role => (
                       <option key={role.id} value={role.name}>{role.name}</option>
                     ))}
                   </select>
@@ -1194,12 +1366,21 @@ export default function AccessManagement() {
                       value={newUser.group}
                       onChange={(e) => setNewUser({...newUser, group: e.target.value})}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                      disabled={currentUser?.role === 'ORG Admin'}
                     >
                       <option value="">Select Group</option>
-                      {groups.map(g => (
+                      {groups
+                        .filter(g => {
+                            if (currentUser?.role === 'ORG Admin') {
+                                return g.name === currentUser.group;
+                            }
+                            return true;
+                        })
+                        .map(g => (
                         <option key={g.id} value={g.name}>{g.name}</option>
                       ))}
                     </select>
+                    {currentUser?.role !== 'ORG Admin' && (
                     <button
                       type="button"
                       onClick={() => {
@@ -1212,6 +1393,7 @@ export default function AccessManagement() {
                     >
                       <Plus size={18} />
                     </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1283,6 +1465,49 @@ export default function AccessManagement() {
       )}
       </AnimatePresence>
 
+      {/* Delete Member Confirmation Modal */}
+      <AnimatePresence>
+        {deletingMember && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden"
+            >
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 rounded-full bg-red-50 text-red-500 flex items-center justify-center mx-auto mb-4">
+                <Trash2 size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Confirm Remove Member</h3>
+              <p className="text-gray-500 mb-6">
+                Are you sure you want to remove <span className="font-semibold text-gray-900">"{deletingMember.name}"</span> from this group?
+              </p>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setDeletingMember(null)}
+                  className="flex-1 px-4 py-2.5 text-gray-700 font-medium hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleRemoveMember}
+                  className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors shadow-sm"
+                >
+                  Remove Member
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+      </AnimatePresence>
+
       {/* Add Group Modal */}
       <AnimatePresence>
         {isAddingGroup && (
@@ -1308,6 +1533,10 @@ export default function AccessManagement() {
                 <input type="text" value={newGroup.name} onChange={(e) => setNewGroup({...newGroup, name: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required placeholder="e.g. Engineering" />
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email Domain</label>
+                <input type="text" value={newGroup.emailDomain} onChange={(e) => setNewGroup({...newGroup, emailDomain: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. company.com" />
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                 <textarea value={newGroup.description} onChange={(e) => setNewGroup({...newGroup, description: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" rows={2} placeholder="Enter group description..." />
               </div>
@@ -1319,6 +1548,11 @@ export default function AccessManagement() {
                 <div className="border border-gray-200 rounded-lg overflow-hidden">
                   <div className="max-h-48 overflow-y-auto divide-y divide-gray-100">
                     {users
+                      .filter(user => 
+                        (currentUser?.role === 'Admin') || 
+                        (!newGroup.emailDomain || user.email.toLowerCase().includes(newGroup.emailDomain.toLowerCase())) || 
+                        (newGroup.memberIds || []).includes(user.id)
+                      )
                       .map(user => (
                       <label key={user.id} className="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer transition-colors">
                         <input 
@@ -1336,6 +1570,13 @@ export default function AccessManagement() {
                         </div>
                       </label>
                     ))}
+                    {users.filter(user => 
+                      (currentUser?.role === 'Admin') || 
+                      (!newGroup.emailDomain || user.email.toLowerCase().includes(newGroup.emailDomain.toLowerCase())) || 
+                      (newGroup.memberIds || []).includes(user.id)
+                    ).length === 0 && (
+                      <div className="p-4 text-center text-gray-500 text-sm">No users found</div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1374,6 +1615,10 @@ export default function AccessManagement() {
                 <input type="text" value={editingGroup.name} onChange={(e) => setEditingGroup({...editingGroup, name: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required />
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email Domain</label>
+                <input type="text" value={editingGroup.emailDomain || ''} onChange={(e) => setEditingGroup({...editingGroup, emailDomain: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                 <textarea value={editingGroup.description} onChange={(e) => setEditingGroup({...editingGroup, description: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" rows={2} />
               </div>
@@ -1385,6 +1630,11 @@ export default function AccessManagement() {
                 <div className="border border-gray-200 rounded-lg overflow-hidden">
                   <div className="max-h-48 overflow-y-auto divide-y divide-gray-100">
                     {users
+                      .filter(user => 
+                        (currentUser?.role === 'Admin') || 
+                        (!editingGroup.emailDomain || user.email.toLowerCase().includes(editingGroup.emailDomain.toLowerCase())) || 
+                        editingGroup.memberIds.includes(user.id)
+                      )
                       .map(user => (
                       <label key={user.id} className="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer transition-colors">
                         <input 
@@ -1402,6 +1652,13 @@ export default function AccessManagement() {
                         </div>
                       </label>
                     ))}
+                    {users.filter(user => 
+                      (currentUser?.role === 'Admin') || 
+                      (!editingGroup.emailDomain || user.email.toLowerCase().includes(editingGroup.emailDomain.toLowerCase())) || 
+                      editingGroup.memberIds.includes(user.id)
+                    ).length === 0 && (
+                      <div className="p-4 text-center text-gray-500 text-sm">No users found</div>
+                    )}
                   </div>
                 </div>
               </div>

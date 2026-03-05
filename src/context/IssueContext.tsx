@@ -3,8 +3,6 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 export type Issue = {
   id: string;
   title: string;
-  status: 'Open' | 'In Progress' | 'Resolved';
-  priority: 'High' | 'Medium' | 'Low' | 'Lowest';
   date: string;
   clientName?: string;
   projectName?: string;
@@ -15,20 +13,20 @@ export type Issue = {
   issueDate?: string;
   attachment?: string;
   attachmentUrl?: string;
+  group?: string;
 };
 
 const mockIssues: Issue[] = [
-  { id: 'AMC-005', title: 'dddd', status: 'Open', priority: 'Medium', date: '2026-02-21' },
-  { id: 'AMC-004', title: 'dd', status: 'Open', priority: 'Low', date: '2026-02-21' },
-  { id: 'AMC-001', title: 'Cannot access database', status: 'Open', priority: 'High', date: '2026-02-21', clientName: 'Acme Corp', projectName: 'Website Redesign', description: 'User cannot login to the database.' },
-  { id: 'AMC-002', title: 'Login page loading slowly', status: 'In Progress', priority: 'Medium', date: '2026-02-20' },
-  { id: 'AMC-003', title: 'Email notification failure', status: 'Resolved', priority: 'Low', date: '2026-02-18' },
+  { id: 'AMC-005', title: 'dddd', date: '2026-02-21', group: 'Global Tech Holdings' },
+  { id: 'AMC-004', title: 'dd', date: '2026-02-21', group: 'Green Energy Group' },
+  { id: 'AMC-001', title: 'Cannot access database', date: '2026-02-21', clientName: 'Acme Corp', projectName: 'Website Redesign', description: 'User cannot login to the database.', group: 'Global Tech Holdings' },
+  { id: 'AMC-002', title: 'Login page loading slowly', date: '2026-02-20', group: 'Retail Giant Corp' },
+  { id: 'AMC-003', title: 'Email notification failure', date: '2026-02-18', group: 'Global Tech Holdings' },
 ];
 
 type IssueContextType = {
   issues: Issue[];
   addIssue: (issue: Issue) => void;
-  updateIssueStatus: (id: string, status: 'Open' | 'In Progress' | 'Resolved') => void;
   userProfile: {
     name: string;
     email: string;
@@ -51,10 +49,6 @@ export function IssueProvider({ children }: { children: ReactNode }) {
     setIssues([issue, ...issues]);
   };
 
-  const updateIssueStatus = (id: string, status: 'Open' | 'In Progress' | 'Resolved') => {
-    setIssues(issues.map(issue => issue.id === id ? { ...issue, status } : issue));
-  };
-
   const updateUserProfile = (profile: { name: string; email: string; profilePic: string | null }) => {
     setUserProfile(profile);
     localStorage.setItem('userName', profile.name);
@@ -67,7 +61,7 @@ export function IssueProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <IssueContext.Provider value={{ issues, addIssue, updateIssueStatus, userProfile, updateUserProfile }}>
+    <IssueContext.Provider value={{ issues, addIssue, userProfile, updateUserProfile }}>
       {children}
     </IssueContext.Provider>
   );

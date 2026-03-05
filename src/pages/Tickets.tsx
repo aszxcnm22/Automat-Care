@@ -1,11 +1,13 @@
-import React, { useState, FormEvent } from 'react';
+import React, { useState, FormEvent, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Search, AlertCircle, CheckCircle2, Clock, ChevronUp, ChevronDown, Equal } from 'lucide-react';
 import Layout from '../components/Layout';
 import { useIssues, Issue } from '../context/IssueContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function Tickets() {
-  const { issues, addIssue, updateIssueStatus, userProfile } = useIssues();
+  const { issues, addIssue, userProfile } = useIssues();
+  const { user } = useAuth();
   const [showNewIssue, setShowNewIssue] = useState(false);
   const [viewIssue, setViewIssue] = useState<Issue | null>(null);
   const [viewImageUrl, setViewImageUrl] = useState<string | null>(null);
@@ -20,7 +22,7 @@ export default function Tickets() {
   };
 
   // New Issue Form State
-  const [clientName, setClientName] = useState(getCompanyNameFromEmail(userProfile.email));
+  const [clientName, setClientName] = useState('');
   const [projectName, setProjectName] = useState('');
   const [issueTitle, setIssueTitle] = useState('');
   const [contactPhone, setContactPhone] = useState('');
@@ -29,6 +31,18 @@ export default function Tickets() {
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const [attachment, setAttachment] = useState<File | null>(null);
   const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (showNewIssue) {
+        if (user?.role === 'Admin') {
+            setClientName(''); // Admin can type anything
+        } else if (user?.group) {
+            setClientName(user.group); // Pre-fill for others
+        } else {
+            setClientName(getCompanyNameFromEmail(userProfile.email));
+        }
+    }
+  }, [showNewIssue, user, userProfile.email]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files ? e.target.files[0] : null;
@@ -62,10 +76,9 @@ export default function Tickets() {
     const newIssue: Issue = {
       id: `AMC-00${issues.length + 1}`,
       title: issueTitle,
-      status: 'Open',
-      priority: 'Medium', // Defaulting to Medium as it's not in the new form
       date: new Date().toISOString().split('T')[0],
       clientName,
+      group: clientName, // Use clientName as group
       projectName,
       description: issueDesc,
       reporterName: userProfile.name,
@@ -78,7 +91,7 @@ export default function Tickets() {
     addIssue(newIssue);
     setShowNewIssue(false);
     // Reset form
-    setClientName(getCompanyNameFromEmail(userProfile.email));
+    setClientName('');
     setProjectName('');
     setIssueTitle('');
     setDuplicateWarning(null);
@@ -89,27 +102,7 @@ export default function Tickets() {
     setAttachmentUrl(null);
   };
 
-  const handleUpdateStatus = (id: string, newStatus: 'Open' | 'In Progress' | 'Resolved') => {
-    updateIssueStatus(id, newStatus);
-    if (viewIssue && viewIssue.id === id) {
-      setViewIssue({ ...viewIssue, status: newStatus });
-    }
-  };
 
-  const getPriorityIcon = (priority: string) => {
-    switch (priority) {
-      case 'High':
-        return <div className="flex items-center gap-2"><ChevronUp className="text-red-500" size={16} /><span className="text-gray-700">High</span></div>;
-      case 'Medium':
-        return <div className="flex items-center gap-2"><Equal className="text-orange-500" size={16} /><span className="text-gray-700">Medium</span></div>;
-      case 'Low':
-        return <div className="flex items-center gap-2"><ChevronDown className="text-blue-500" size={16} /><span className="text-gray-700">Low</span></div>;
-      case 'Lowest':
-        return <div className="flex items-center gap-2"><div className="flex flex-col -space-y-2"><ChevronDown className="text-blue-400" size={16} /><ChevronDown className="text-blue-400" size={16} /></div><span className="text-gray-700">Lowest</span></div>;
-      default:
-        return null;
-    }
-  };
 
   const container = {
     hidden: { opacity: 0 },
@@ -131,6 +124,22 @@ export default function Tickets() {
       transition: { duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }
     }
   };
+
+  const filteredIssues = issues.filter(issue => {
+    const matchesSearch = 
+        issue.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        issue.title.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Role-based filtering
+    let matchesGroup = true;
+    if (user?.role !== 'Admin') {
+        // For ORG Admin and Member, only show tickets from their group
+        // We check both 'group' field and 'clientName' for backward compatibility or if group isn't set
+        matchesGroup = issue.group === user?.group || issue.clientName === user?.group;
+    }
+
+    return matchesSearch && matchesGroup;
+  });
 
   return (
     <Layout>
@@ -190,10 +199,7 @@ export default function Tickets() {
               animate="show"
               className="divide-y divide-gray-200"
             >
-              {issues.filter(issue => 
-                issue.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                issue.title.toLowerCase().includes(searchTerm.toLowerCase())
-              ).map((issue) => (
+              {filteredIssues.map((issue) => (
                 <motion.tr 
                   key={issue.id} 
                   variants={item}
@@ -215,10 +221,7 @@ export default function Tickets() {
                   </td>
                 </motion.tr>
               ))}
-              {issues.filter(issue => 
-                issue.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                issue.title.toLowerCase().includes(searchTerm.toLowerCase())
-              ).length === 0 && (
+              {filteredIssues.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                     ไม่พบข้อมูล Ticket ที่ค้นหา
@@ -259,8 +262,9 @@ export default function Tickets() {
                     type="text" 
                     value={clientName}
                     onChange={(e) => setClientName(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow ${user?.role !== 'Admin' ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
                     required
+                    readOnly={user?.role !== 'Admin'}
                   />
                 </div>
 
@@ -414,16 +418,6 @@ export default function Tickets() {
                   <div>
                     <p className="text-sm text-gray-500 font-medium">{viewIssue.id}</p>
                     <h4 className="text-xl font-bold text-gray-900 mt-1">{viewIssue.title}</h4>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                      ${viewIssue.status === 'Open' ? 'bg-red-100 text-red-800' : 
-                        viewIssue.status === 'In Progress' ? 'bg-yellow-100 text-yellow-800' : 
-                        'bg-green-100 text-green-800'}`}
-                    >
-                      {viewIssue.status}
-                    </span>
-                    {getPriorityIcon(viewIssue.priority)}
                   </div>
                 </div>
                 
