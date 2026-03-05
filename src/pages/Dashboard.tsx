@@ -1,6 +1,6 @@
 import React from 'react';
 import Layout from '../components/Layout';
-import { AlertCircle, CheckCircle2, Clock, BarChart3, Activity } from 'lucide-react';
+import { BarChart3, Activity, Download } from 'lucide-react';
 import { useIssues } from '../context/IssueContext';
 
 export default function Dashboard() {
@@ -10,41 +10,78 @@ export default function Dashboard() {
   const inProgressIssues = issues.filter(i => i.status === 'In Progress').length;
   const resolvedIssues = issues.filter(i => i.status === 'Resolved').length;
 
+  const generateCSV = (headers: string[], rows: any[][], fileName: string) => {
+    const csvContent =
+      [headers, ...rows]
+        .map(row => row.map(field => `"${field ?? ''}"`).join(','))
+        .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const downloadAllIssues = () => {
+    if (!issues.length) return;
+
+    const headers = ['ID', 'Title', 'Description', 'Date'];
+    const rows = issues.map(issue => [
+      issue.id,
+      issue.title,
+      issue.description,
+      issue.priority,
+      issue.date
+    ]);
+
+    generateCSV(headers, rows, `issues-${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
+  const downloadSummary = () => {
+    const headers = ['Metric', 'Count'];
+    const rows = [
+      ['Open Issues', openIssues],
+      ['In Progress Issues', inProgressIssues],
+      ['Resolved Issues', resolvedIssues],
+      ['Total Issues', issues.length],
+    ];
+
+    generateCSV(headers, rows, `dashboard-summary-${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
   return (
     <Layout>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700">Dashboard</h1>
-        <p className="text-slate-500 text-sm mt-1">Overview of the system and status of all issues</p>
-      </div>
+      <div className="mb-8 flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700">
+            Dashboard
+          </h1>
+          <p className="text-slate-500 text-sm mt-1">
+            Overview of the system and status of all issues
+          </p>
+        </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex items-center gap-4 group">
-          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center text-red-500 group-hover:scale-110 transition-transform duration-300 shadow-inner">
-            <AlertCircle size={28} />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-slate-500">Open Issues</p>
-            <p className="text-3xl font-bold text-slate-900">{openIssues}</p>
-          </div>
-        </div>
-        <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex items-center gap-4 group">
-          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-yellow-50 to-yellow-100 flex items-center justify-center text-yellow-500 group-hover:scale-110 transition-transform duration-300 shadow-inner">
-            <Clock size={28} />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-slate-500">In Progress</p>
-            <p className="text-3xl font-bold text-slate-900">{inProgressIssues}</p>
-          </div>
-        </div>
-        <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex items-center gap-4 group">
-          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform duration-300 shadow-inner">
-            <CheckCircle2 size={28} />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-slate-500">Resolved</p>
-            <p className="text-3xl font-bold text-slate-900">{resolvedIssues}</p>
-          </div>
+        <div className="flex gap-3">
+          <button
+            onClick={downloadAllIssues}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow transition"
+          >
+            <Download size={18} />
+            Download All CSV
+          </button>
+
+          <button
+            onClick={downloadSummary}
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow transition"
+          >
+            <Download size={18} />
+            Download Summary CSV
+          </button>
         </div>
       </div>
 
@@ -54,13 +91,23 @@ export default function Dashboard() {
             <Activity className="text-blue-500" />
             <h2 className="text-lg font-semibold">Latest Activity</h2>
           </div>
+
           <div className="space-y-4">
             {issues.slice(0, 3).map((issue) => (
-              <div key={issue.id} className="flex gap-4 items-start pb-4 border-b border-gray-100 last:border-0">
+              <div
+                key={issue.id}
+                className="flex gap-4 items-start pb-4 border-b border-gray-100 last:border-0"
+              >
                 <div className="w-2 h-2 mt-2 rounded-full bg-blue-500"></div>
                 <div>
-                  <p className="text-sm font-medium text-gray-900">New Ticket Created ({issue.id})</p>
-                  <p className="text-xs text-gray-500 mt-1">{issue.date === new Date().toISOString().split('T')[0] ? 'Today' : issue.date}</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    New Ticket Created ({issue.id})
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {issue.date === new Date().toISOString().split('T')[0]
+                      ? 'Today'
+                      : issue.date}
+                  </p>
                 </div>
               </div>
             ))}

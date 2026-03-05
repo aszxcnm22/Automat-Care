@@ -14,7 +14,7 @@ export default function Login() {
     e.preventDefault();
     // Simulate login and save email
     localStorage.setItem('userEmail', email);
-    navigate('/tickets');
+    navigate('/home');
   };
 
   return (
