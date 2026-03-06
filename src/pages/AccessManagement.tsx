@@ -989,8 +989,8 @@ export default function AccessManagement() {
                                 <Edit2 size={16} />
                               </button>
                               )}
-                              {/* Only Admin can delete users */}
-                              {currentUser?.role === 'Admin' && (
+                              {/* Only Admin or ORG Admin can delete users */}
+                              {(currentUser?.role === 'Admin' || (currentUser?.role === 'ORG Admin' && user.role !== 'Admin')) && (
                               <button 
                                 onClick={() => setDeletingUser(user)}
                                 className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 active:scale-90"
@@ -1378,6 +1378,14 @@ export default function AccessManagement() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Group</label>
                   <div className="flex gap-2">
+                    {currentUser?.role === 'ORG Admin' ? (
+                      <input 
+                        type="text" 
+                        value={editingUser.group} 
+                        readOnly 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none bg-gray-50 text-gray-500" 
+                      />
+                    ) : (
                     <select 
                       value={editingUser.group}
                       onChange={(e) => setEditingUser({...editingUser, group: e.target.value})}
@@ -1396,6 +1404,7 @@ export default function AccessManagement() {
                         <option key={g.id} value={g.name}>{g.name}</option>
                       ))}
                     </select>
+                    )}
                     {currentUser?.role !== 'ORG Admin' && (
                     <button
                       type="button"
@@ -1507,6 +1516,14 @@ export default function AccessManagement() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Group</label>
                   <div className="flex gap-2">
+                    {currentUser?.role === 'ORG Admin' ? (
+                      <input 
+                        type="text" 
+                        value={newUser.group} 
+                        readOnly 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none bg-gray-50 text-gray-500" 
+                      />
+                    ) : (
                     <select 
                       value={newUser.group}
                       onChange={(e) => setNewUser({...newUser, group: e.target.value})}
@@ -1525,6 +1542,7 @@ export default function AccessManagement() {
                         <option key={g.id} value={g.name}>{g.name}</option>
                       ))}
                     </select>
+                    )}
                     {currentUser?.role !== 'ORG Admin' && (
                     <button
                       type="button"
