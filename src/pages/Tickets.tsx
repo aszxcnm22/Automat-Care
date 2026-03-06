@@ -64,12 +64,11 @@ export default function Tickets() {
     // Check for duplicate title or description
     const duplicateIssue = issues.find(
       (issue) => 
-        issue.title.toLowerCase() === issueTitle.toLowerCase() || 
-        (issue.description && issue.description.toLowerCase() === issueDesc.toLowerCase())
+        issue.projectName === projectName && issue.title.toLowerCase() === issueTitle.toLowerCase()
     );
 
     if (duplicateIssue) {
-      setDuplicateWarning(`Warning: An issue with this Title or Description already exists (Ticket ID: ${duplicateIssue.id}).`);
+      setDuplicateWarning(`Warning: An issue with this Project Name and Title already exists (Ticket ID: ${duplicateIssue.id}).`);
       return;
     }
 
@@ -188,7 +187,9 @@ export default function Tickets() {
             <thead className="bg-gray-50 text-gray-500 border-b border-gray-200">
               <tr>
                 <th className="px-6 py-3 font-medium">Ticket ID</th>
+                <th className="px-6 py-3 font-medium">Project Name</th>
                 <th className="px-6 py-3 font-medium">Title</th>
+                <th className="px-6 py-3 font-medium">Detailed Description</th>
                 <th className="px-6 py-3 font-medium">Date Reported</th>
                 <th className="px-6 py-3 font-medium text-right">Action</th>
               </tr>
@@ -206,8 +207,10 @@ export default function Tickets() {
                   whileHover={{ backgroundColor: "rgba(249, 250, 251, 1)" }}
                   className="hover:bg-gray-50 transition-colors"
                 >
-                  <td className="px-6 py-4 font-medium text-gray-900">{issue.id}</td>
+                  <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{issue.id}</td>
+                  <td className="px-6 py-4 text-gray-700">{issue.projectName || '-'}</td>
                   <td className="px-6 py-4 text-gray-700">{issue.title}</td>
+                  <td className="px-6 py-4 text-gray-500 max-w-xs truncate" title={issue.description}>{issue.description || '-'}</td>
                   <td className="px-6 py-4 text-gray-500">{issue.date}</td>
                   <td className="px-6 py-4 text-right">
                     <motion.button 

@@ -153,6 +153,59 @@ export default function AccessManagement() {
     group: ''
   });
 
+  // Selector & Context Menu State
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; visible: boolean } | null>(null);
+
+  const handleSelectUser = (userId: string) => {
+    setSelectedUsers(prev => 
+      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    );
+  };
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedUsers(filteredUsers.map(u => u.id));
+    } else {
+      setSelectedUsers([]);
+    }
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, userId: string) => {
+    e.preventDefault();
+    if (!selectedUsers.includes(userId)) {
+      setSelectedUsers([userId]);
+    }
+    setContextMenu({ x: e.clientX, y: e.clientY, visible: true });
+  };
+
+  const closeContextMenu = () => setContextMenu(null);
+
+  useEffect(() => {
+    const handleClick = () => closeContextMenu();
+    window.addEventListener('click', handleClick);
+    return () => window.removeEventListener('click', handleClick);
+  }, []);
+
+  const handleChangeRole = (newRole: UserRole) => {
+    setUsers(users.map(u => selectedUsers.includes(u.id) ? { ...u, role: newRole } : u));
+    closeContextMenu();
+    setSelectedUsers([]);
+  };
+
+  const handleRemoveSelectedUsers = () => {
+    setUsers(users.filter(u => !selectedUsers.includes(u.id)));
+    // Also remove from groups
+    setGroups(groups.map(g => ({
+      ...g,
+      memberIds: g.memberIds.filter(id => !selectedUsers.includes(id)),
+      memberCount: g.memberIds.filter(id => !selectedUsers.includes(id)).length
+    })));
+    closeContextMenu();
+    setSelectedUsers([]);
+  };
+
+
   // Group Modals State
   const [isAddingGroup, setIsAddingGroup] = useState(false);
   const [editingGroup, setEditingGroup] = useState<AccessGroup | null>(null);
@@ -384,6 +437,11 @@ export default function AccessManagement() {
         memberCount: editingGroup.memberIds.length
       };
       setGroups(groups.map(g => g.id === editingGroup.id ? updatedGroup : g));
+      
+      // Update selectedGroup if we are currently viewing this group
+      if (selectedGroup && selectedGroup.id === editingGroup.id) {
+        setSelectedGroup(updatedGroup);
+      }
 
       setUsers(users.map(u => {
         if (updatedGroup.memberIds.includes(u.id)) {
@@ -431,12 +489,19 @@ export default function AccessManagement() {
   const handleAddRole = (e: React.FormEvent) => {
     e.preventDefault();
     if (newRole.name) {
+      // Generate a unique ID based on the highest existing ID
+      const maxId = roles.reduce((max, role) => {
+        const idPart = role.id.split('-')[1];
+        const num = idPart ? parseInt(idPart) : 0;
+        return num > max ? num : max;
+      }, 0);
+      
       const roleToAdd: AccessRole = {
-        id: `ROL-${String(roles.length + 1).padStart(3, '0')}`,
+        id: `ROL-${String(maxId + 1).padStart(3, '0')}`,
         name: newRole.name,
         description: newRole.description || '',
         permissions: newRole.permissions || [],
-        userCount: 0
+        userCount: newRole.selectedUserIds?.length || 0
       };
       setRoles([...roles, roleToAdd]);
       
@@ -457,23 +522,28 @@ export default function AccessManagement() {
   const handleSaveRole = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingRole) {
-      setRoles(roles.map(r => r.id === editingRole.id ? editingRole : r));
+      const updatedRole = {
+        ...editingRole,
+        userCount: editingRole.selectedUserIds?.length || 0
+      };
+      setRoles(roles.map(r => r.id === editingRole.id ? updatedRole : r));
       
       // Update users who were selected for this role
       if (editingRole.selectedUserIds) {
         setUsers(users.map(u => {
-          // If user was in the selection, set their role to this role
+          // If user is selected for this role, update their role
           if (editingRole.selectedUserIds?.includes(u.id)) {
             return { ...u, role: editingRole.name as UserRole };
           }
-          // If user was NOT in the selection but HAD this role, we might want to reset them to 'User'
-          // but that's risky. Let's just handle the "add" part or "keep" part.
-          // Actually, a better way is to just let the User modal handle it, 
-          // OR implement a full sync.
+          
+          if (u.role === editingRole.name && !editingRole.selectedUserIds?.includes(u.id)) {
+
+             return u; 
+          }
           return u;
         }));
       }
-      
+
       setEditingRole(null);
     }
   };
@@ -548,15 +618,7 @@ export default function AccessManagement() {
               </button>
               )
             )
-          ) : (
-            <button 
-              onClick={() => setIsAddingRole(true)}
-              className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-2.5 rounded-xl font-medium transition-all duration-200 active:scale-95 shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 whitespace-nowrap"
-            >
-              <Plus size={18} />
-              Add New Role
-            </button>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -633,6 +695,7 @@ export default function AccessManagement() {
               </div>
 
               {/* Group Filter */}
+              {currentUser?.role === 'Admin' && (
               <div className="relative">
                 <select 
                   value={filterGroup}
@@ -648,6 +711,7 @@ export default function AccessManagement() {
                   <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                 </div>
               </div>
+              )}
             </div>
           )}
 
@@ -682,6 +746,7 @@ export default function AccessManagement() {
                         <p className="text-2xl font-bold text-slate-900">{scopeUsers.length}</p>
                       </div>
                     </motion.div>
+                    {currentUser?.role === 'Admin' && (
                     <motion.div 
                       variants={item}
                       whileHover={{ scale: 1.02, translateY: -5 }}
@@ -695,6 +760,7 @@ export default function AccessManagement() {
                         <p className="text-2xl font-bold text-slate-900">{scopeUsers.filter(u => u.role === 'Admin').length}</p>
                       </div>
                     </motion.div>
+                    )}
                     <motion.div 
                       variants={item}
                       whileHover={{ scale: 1.02, translateY: -5 }}
@@ -771,7 +837,7 @@ export default function AccessManagement() {
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4">{getRoleBadge(user.role)}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{getRoleBadge(user.role)}</td>
                           <td className="px-6 py-4 text-gray-900">{user.group}</td>
                           <td className="px-6 py-4 text-gray-500 text-[10px]">{user.email}</td>
                           <td className="px-6 py-4 text-right">
@@ -847,10 +913,20 @@ export default function AccessManagement() {
               <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gray-50/50">
                 <h2 className="font-semibold text-gray-900">User List</h2>
               </div>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto relative">
                   <table className="w-full text-left text-sm">
                     <thead className="bg-gray-50 text-gray-500 border-b border-gray-200">
                       <tr>
+                        {currentUser?.role !== 'Member' && (
+                        <th className="px-6 py-4 font-medium w-10">
+                          <input 
+                            type="checkbox" 
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            checked={filteredUsers.length > 0 && selectedUsers.length === filteredUsers.length}
+                            onChange={handleSelectAll}
+                          />
+                        </th>
+                        )}
                         <th className="px-6 py-4 font-medium">User</th>
                         {currentUser?.role !== 'Member' && <th className="px-6 py-4 font-medium">Role</th>}
                         <th className="px-6 py-4 font-medium">Group</th>
@@ -869,8 +945,25 @@ export default function AccessManagement() {
                         <motion.tr 
                           key={user.id} 
                           variants={item}
-                          className="hover:bg-gray-50 transition-colors"
+                          className={`hover:bg-gray-50 transition-colors ${selectedUsers.includes(user.id) ? 'bg-blue-50/50' : ''}`}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            if (currentUser?.role !== 'Member') {
+                              handleContextMenu(e, user.id);
+                            }
+                          }}
                         >
+                          {currentUser?.role !== 'Member' && (
+                          <td className="px-6 py-4">
+                            <input 
+                              type="checkbox" 
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              checked={selectedUsers.includes(user.id)}
+                              onChange={() => handleSelectUser(user.id)}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </td>
+                          )}
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">
@@ -881,7 +974,7 @@ export default function AccessManagement() {
                               </div>
                             </div>
                           </td>
-                          {currentUser?.role !== 'Member' && <td className="px-6 py-4">{getRoleBadge(user.role)}</td>}
+                          {currentUser?.role !== 'Member' && <td className="px-6 py-4 whitespace-nowrap">{getRoleBadge(user.role)}</td>}
                           <td className="px-6 py-4 text-gray-900">{user.group}</td>
                           <td className="px-6 py-4 text-gray-500">{user.email}</td>
                           {currentUser?.role !== 'Member' && (
@@ -912,13 +1005,65 @@ export default function AccessManagement() {
                       ))}
                       {filteredUsers.length === 0 && (
                         <tr>
-                          <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                          <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                             No users found
                           </td>
                         </tr>
                       )}
                     </motion.tbody>
                   </table>
+                  
+                  {/* Context Menu */}
+                  {contextMenu && contextMenu.visible && (
+                    <div 
+                      className="fixed bg-white border border-gray-200 shadow-lg rounded-lg py-1 z-50 w-48"
+                      style={{ top: contextMenu.y, left: contextMenu.x }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="px-4 py-2 text-xs font-semibold text-gray-500 border-b border-gray-100 mb-1">
+                        Selected: {selectedUsers.length} user(s)
+                      </div>
+                      
+                      <div className="px-2 py-1">
+                        <p className="px-2 py-1 text-xs font-medium text-gray-400 uppercase">Change Role</p>
+                        {currentUser?.role === 'Admin' && (
+                          <button 
+                            onClick={() => handleChangeRole('Admin')}
+                            className="w-full text-left px-2 py-1.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md flex items-center gap-2"
+                          >
+                            <Shield size={14} /> Admin
+                          </button>
+                        )}
+                        <button 
+                          onClick={() => handleChangeRole('ORG Admin')}
+                          className="w-full text-left px-2 py-1.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md flex items-center gap-2"
+                        >
+                          <ShieldCheck size={14} /> ORG Admin
+                        </button>
+                        <button 
+                          onClick={() => handleChangeRole('Member')}
+                          className="w-full text-left px-2 py-1.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md flex items-center gap-2"
+                        >
+                          <UserCheck size={14} /> Member
+                        </button>
+                        <button 
+                          onClick={() => handleChangeRole('GUEST')}
+                          className="w-full text-left px-2 py-1.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md flex items-center gap-2"
+                        >
+                          <Users size={14} /> GUEST
+                        </button>
+                      </div>
+
+                      <div className="border-t border-gray-100 my-1"></div>
+                      
+                      <button 
+                        onClick={handleRemoveSelectedUsers}
+                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                      >
+                        <Trash2 size={14} /> Remove Selected Users
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
           ) : activeSubTab === 'Groups' ? (
@@ -1125,10 +1270,10 @@ export default function AccessManagement() {
                     variants={item}
                     className="hover:bg-gray-50 transition-colors"
                   >
-                    <td className="px-6 py-4 font-medium text-gray-900">{role.name}</td>
+                    <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{role.name}</td>
                     <td className="px-6 py-4 text-gray-500 text-xs">{role.description}</td>
                     <td className="px-6 py-4 text-gray-500 text-center">
-                      {role.userCount}
+                      {users.filter(u => u.role === role.name).length}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -1549,7 +1694,6 @@ export default function AccessManagement() {
                   <div className="max-h-48 overflow-y-auto divide-y divide-gray-100">
                     {users
                       .filter(user => 
-                        (currentUser?.role === 'Admin') || 
                         (!newGroup.emailDomain || user.email.toLowerCase().includes(newGroup.emailDomain.toLowerCase())) || 
                         (newGroup.memberIds || []).includes(user.id)
                       )
@@ -1631,7 +1775,6 @@ export default function AccessManagement() {
                   <div className="max-h-48 overflow-y-auto divide-y divide-gray-100">
                     {users
                       .filter(user => 
-                        (currentUser?.role === 'Admin') || 
                         (!editingGroup.emailDomain || user.email.toLowerCase().includes(editingGroup.emailDomain.toLowerCase())) || 
                         editingGroup.memberIds.includes(user.id)
                       )
