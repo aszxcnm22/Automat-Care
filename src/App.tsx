@@ -7,17 +7,21 @@ import Dashboard from './pages/Dashboard';
 import Tickets from './pages/Tickets';
 import Profile from './pages/Profile';
 import AccessManagement from './pages/AccessManagement';
+import Projects from './pages/Projects';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { IssueProvider } from './context/IssueContext';
+import { ProjectProvider } from './context/ProjectContext';
 
 export default function App() {
   return (
     <AuthProvider>
-      <IssueProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-      </IssueProvider>
+      <ProjectProvider>
+        <IssueProvider>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </IssueProvider>
+      </ProjectProvider>
     </AuthProvider>
   );
 }
@@ -34,6 +38,7 @@ function AppRoutes() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/tickets" element={<Tickets />} />
+      <Route path="/projects" element={<Projects />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/access-management" element={<AccessManagement />} />
       <Route path="*" element={<Navigate to="/" replace />} />

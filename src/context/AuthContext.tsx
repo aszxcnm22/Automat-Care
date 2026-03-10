@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
-export type UserRole = 'Admin' | 'ORG Admin' | 'Member';
+export type UserRole = 'Admin' | 'ORG Admin' | 'Member' | 'GUEST';
 
 export interface User {
   id: string;
@@ -57,16 +57,71 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             group: 'Global Tech Holdings Company',
         };
     }
+    // ORG Admin 2 (Green Energy Group)
+    else if (email === 'orgadmin@greenenergy.com' && password === 'orgadmin123') {
+        mockUser = {
+            id: 'USR-004',
+            name: 'Green Energy Org Admin',
+            email: 'orgadmin@greenenergy.com',
+            role: 'ORG Admin',
+            group: 'Green Energy Group',
+        };
+    } 
+    // Member 2 (Green Energy Group)
+    else if (email === 'member@greenenergy.com' && password === 'member123') {
+        mockUser = {
+            id: 'USR-005',
+            name: 'Green Energy Member',
+            email: 'member@greenenergy.com',
+            role: 'Member',
+            group: 'Green Energy Group',
+        };
+    }
+    // Guest
+    else if (email === 'guest@system.com' && password === 'guest123') {
+        mockUser = {
+            id: 'USR-006',
+            name: 'Guest User',
+            email: 'guest@system.com',
+            role: 'GUEST',
+            group: '',
+        };
+    }
 
     if (mockUser) {
         setUser(mockUser);
         localStorage.setItem('auth_user', JSON.stringify(mockUser));
+        
+        // Record Login History
+        const history = JSON.parse(localStorage.getItem('access_history') || '[]');
+        history.unshift({
+          id: `LOG-${Date.now()}`,
+          user: mockUser.name,
+          email: mockUser.email,
+          action: 'Login',
+          date: new Date().toISOString()
+        });
+        localStorage.setItem('access_history', JSON.stringify(history));
+
         return true;
     }
     return false;
   };
 
   const logout = () => {
+    if (user) {
+      // Record Logout History
+      const history = JSON.parse(localStorage.getItem('access_history') || '[]');
+      history.unshift({
+        id: `LOG-${Date.now()}`,
+        user: user.name,
+        email: user.email,
+        action: 'Logout',
+        date: new Date().toISOString()
+      });
+      localStorage.setItem('access_history', JSON.stringify(history));
+    }
+
     setUser(null);
     localStorage.removeItem('auth_user');
   };

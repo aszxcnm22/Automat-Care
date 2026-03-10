@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import Layout from "../components/Layout";
+import { useAuth } from "../context/AuthContext";
 
 const container = {
   hidden: {},
@@ -23,6 +24,8 @@ const item = {
 };
 
 export default function Home() {
+  const { user } = useAuth();
+
   return (
     <Layout>
       <motion.div
@@ -40,10 +43,19 @@ export default function Home() {
             </h1>
 
             <p className="text-slate-500 text-lg leading-relaxed max-w-md mb-8">
-             Centralized Service Request & Incident Management
+              Centralized Service Request & Incident Management
+              {user?.role === 'GUEST' && (
+                <>
+                  <br /><br />
+                  <span className="text-sm text-slate-400">
+                    ผู้ใช้จะสามารถเข้าถึงเมนูต่าง ๆ ได้ก็ต่อเมื่อได้รับ Role ก่อนเท่านั้น เมนูต่าง ๆ จะยังไม่แสดงจนกว่าผู้ใช้จะได้รับ Role อย่างใดอย่างหนึ่ง เช่น ORG Admin หรือ Member
+                  </span>
+                </>
+              )}
             </p>
 
             {/* Button */}
+            {user?.role !== 'GUEST' && (
             <motion.div
               variants={item}
               className="flex flex-col sm:flex-row items-start gap-4"
@@ -56,6 +68,7 @@ export default function Home() {
                 <ArrowRight size={20} />
               </Link>
             </motion.div>
+            )}
           </motion.div>
 
           {/* Image Section */}

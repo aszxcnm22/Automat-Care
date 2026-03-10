@@ -23,7 +23,7 @@ interface AccessGroup {
   memberCount: number;
   createdAt: string;
   memberIds: string[];
-  history?: { action: string; user: string; date: string }[];
+  history?: { action: string; user: string; date: string; functionName?: string; codeSection?: string }[];
 }
 
 interface AccessRole {
@@ -146,6 +146,7 @@ export default function AccessManagement() {
   const [editingUser, setEditingUser] = useState<AccessUser | null>(null);
   const [deletingUser, setDeletingUser] = useState<AccessUser | null>(null);
   const [isAddingUser, setIsAddingUser] = useState(false);
+  const [addUserError, setAddUserError] = useState<string | null>(null);
   const [newUser, setNewUser] = useState<Partial<AccessUser>>({
     name: '',
     email: '',
@@ -179,7 +180,7 @@ export default function AccessManagement() {
     
     // Adjust position to stay within viewport
     const menuWidth = 192;
-    const menuHeight = 280; // Approximate height of the menu
+    const menuHeight = 300; // Approximate height of the menu
     let x = e.clientX;
     let y = e.clientY;
 
@@ -189,6 +190,9 @@ export default function AccessManagement() {
     if (y + menuHeight > window.innerHeight) {
       y = window.innerHeight - menuHeight - 10;
     }
+    
+    if (x < 0) x = 10;
+    if (y < 0) y = 10;
 
     setContextMenu({ x, y, visible: true });
   };
@@ -222,6 +226,7 @@ export default function AccessManagement() {
 
   // Group Modals State
   const [isAddingGroup, setIsAddingGroup] = useState(false);
+  const [addGroupError, setAddGroupError] = useState<string | null>(null);
   const [editingGroup, setEditingGroup] = useState<AccessGroup | null>(null);
   const [deletingGroup, setDeletingGroup] = useState<AccessGroup | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<AccessGroup | null>(null);
@@ -370,20 +375,49 @@ export default function AccessManagement() {
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
     if (newUser.name && newUser.email) {
+      if (users.some(u => u.name.toLowerCase() === newUser.name?.toLowerCase())) {
+        setAddUserError('ชื่อผู้ใช้นี้มีอยู่ในระบบแล้ว (Name already exists)');
+        return;
+      }
+      if (users.some(u => u.email.toLowerCase() === newUser.email?.toLowerCase())) {
+        setAddUserError('อีเมลนี้มีอยู่ในระบบแล้ว (Email already exists)');
+        return;
+      }
+      setAddUserError(null);
+
+      let assignedGroup = newUser.group || '';
+      if (!assignedGroup && newUser.email) {
+        const domain = newUser.email.split('@')[1];
+        if (domain) {
+          const matchingGroup = groups.find(g => g.emailDomain && g.emailDomain.toLowerCase() === domain.toLowerCase());
+          if (matchingGroup) {
+            assignedGroup = matchingGroup.name;
+          }
+        }
+      }
+
       const newId = `USR-${String(users.length + 1).padStart(3, '0')}`;
       const userToAdd: AccessUser = {
         id: newId,
         name: newUser.name,
         email: newUser.email,
         role: newUser.role as UserRole,
-        group: newUser.group || ''
+        group: assignedGroup
       };
       setUsers([...users, userToAdd]);
 
-      if (userToAdd.group) {
+      if (assignedGroup) {
         setGroups(groups.map(g => 
-          g.name === userToAdd.group 
-            ? { ...g, memberIds: [...g.memberIds, userToAdd.id], memberCount: g.memberCount + 1 }
+          g.name === assignedGroup 
+            ? { 
+                ...g, 
+                memberIds: [...g.memberIds, userToAdd.id], 
+                memberCount: g.memberCount + 1,
+                history: [
+                  { action: 'Joined', user: userToAdd.name, date: new Date().toISOString().split('T')[0] },
+                  ...(g.history || [])
+                ]
+              }
             : g
         ));
       }
@@ -413,6 +447,16 @@ export default function AccessManagement() {
   const handleAddGroup = (e: React.FormEvent) => {
     e.preventDefault();
     if (newGroup.name) {
+      if (groups.some(g => g.name.toLowerCase() === newGroup.name?.toLowerCase())) {
+        setAddGroupError('ชื่อกลุ่มนี้มีอยู่ในระบบแล้ว (Group name already exists)');
+        return;
+      }
+      if (newGroup.emailDomain && groups.some(g => g.emailDomain?.toLowerCase() === newGroup.emailDomain?.toLowerCase())) {
+        setAddGroupError('โดเมนอีเมลนี้มีอยู่ในระบบแล้ว (Email domain already exists)');
+        return;
+      }
+      setAddGroupError(null);
+
       const groupToAdd: AccessGroup = {
         id: `GRP-${String(groups.length + 1).padStart(3, '0')}`,
         name: newGroup.name,
@@ -422,7 +466,13 @@ export default function AccessManagement() {
         memberIds: newGroup.memberIds || [],
         createdAt: new Date().toISOString().split('T')[0],
         history: [
-          { action: 'Created', user: 'System Admin', date: new Date().toISOString().split('T')[0] }
+          { 
+            action: 'Created', 
+            user: 'System Admin', 
+            date: new Date().toISOString().split('T')[0],
+            functionName: 'handleAddGroup',
+            codeSection: 'AccessManagement.tsx:447'
+          }
         ]
       };
       setGroups([...groups, groupToAdd]);
@@ -448,7 +498,14 @@ export default function AccessManagement() {
 
       const updatedGroup = {
         ...editingGroup,
-        memberCount: editingGroup.memberIds.length
+        memberCount: editingGroup.memberIds.length,
+        history: [...(editingGroup.history || []), { 
+            action: 'Updated', 
+            user: 'System Admin', 
+            date: new Date().toISOString().split('T')[0],
+            functionName: 'handleSaveGroup',
+            codeSection: 'AccessManagement.tsx:487'
+        }]
       };
       setGroups(groups.map(g => g.id === editingGroup.id ? updatedGroup : g));
       
@@ -602,7 +659,9 @@ export default function AccessManagement() {
       >
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700">Access Management</h1>
+          <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700">
+            {currentUser?.role === 'Admin' ? 'Access Management' : currentUser?.group || 'Access Management'}
+          </h1>
           <p className="text-slate-500 text-sm mt-1">Manage users and system access rights</p>
         </div>
         <div className="flex items-center gap-3">
@@ -1049,77 +1108,6 @@ export default function AccessManagement() {
                       )}
                     </motion.tbody>
                   </table>
-                  
-                  {/* Context Menu */}
-                  {contextMenu && contextMenu.visible && (() => {
-                    const selectedUserObjects = users.filter(u => selectedUsers.includes(u.id));
-                    const hasAdminOrOrgAdminSelected = selectedUserObjects.some(u => u.role === 'Admin' || u.role === 'ORG Admin');
-                    const canChangeRole = currentUser?.role === 'Admin' || (currentUser?.role === 'ORG Admin' && !hasAdminOrOrgAdminSelected);
-
-                    return (
-                    <div 
-                      className="fixed bg-white border border-gray-200 shadow-lg rounded-lg py-1 z-50 w-48"
-                      style={{ top: contextMenu.y, left: contextMenu.x }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="px-4 py-2 text-xs font-semibold text-gray-500 border-b border-gray-100 mb-1">
-                        Selected: {selectedUsers.length} user(s)
-                      </div>
-                      
-                      <div className="px-2 py-1">
-                        <p className="px-2 py-1 text-xs font-medium text-gray-400 uppercase">Change Role</p>
-                        {!canChangeRole ? (
-                          <p className="px-2 py-2 text-xs text-amber-600 italic">
-                            Cannot change role for {hasAdminOrOrgAdminSelected ? 'Admin/ORG Admin' : 'these users'}
-                          </p>
-                        ) : (
-                          <>
-                            {currentUser?.role === 'Admin' && (
-                              <button 
-                                onClick={() => handleChangeRole('Admin')}
-                                className="w-full text-left px-2 py-1.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md flex items-center gap-2"
-                              >
-                                <Shield size={14} /> Admin
-                              </button>
-                            )}
-                            <button 
-                              onClick={() => handleChangeRole('ORG Admin')}
-                              className="w-full text-left px-2 py-1.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md flex items-center gap-2"
-                            >
-                              <ShieldCheck size={14} /> ORG Admin
-                            </button>
-                            <button 
-                              onClick={() => handleChangeRole('Member')}
-                              className="w-full text-left px-2 py-1.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md flex items-center gap-2"
-                            >
-                              <UserCheck size={14} /> Member
-                            </button>
-                            <button 
-                              onClick={() => handleChangeRole('GUEST')}
-                              className="w-full text-left px-2 py-1.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md flex items-center gap-2"
-                            >
-                              <Users size={14} /> GUEST
-                            </button>
-                          </>
-                        )}
-                      </div>
-
-                      <div className="border-t border-gray-100 my-1"></div>
-                      
-                      <button 
-                        onClick={handleRemoveSelectedUsers}
-                        disabled={currentUser?.role === 'ORG Admin' && hasAdminOrOrgAdminSelected}
-                        className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${
-                          currentUser?.role === 'ORG Admin' && hasAdminOrOrgAdminSelected 
-                            ? 'text-gray-300 cursor-not-allowed' 
-                            : 'text-red-600 hover:bg-red-50'
-                        }`}
-                      >
-                        <Trash2 size={14} /> Remove Selected Users
-                      </button>
-                    </div>
-                    );
-                  })()}
                 </div>
               </div>
           ) : activeSubTab === 'Groups' ? (
@@ -1167,6 +1155,22 @@ export default function AccessManagement() {
                     <table className="w-full text-left text-sm">
                       <thead className="bg-gray-50 text-gray-500 border-b border-gray-200">
                         <tr>
+                          {currentUser?.role !== 'Member' && (
+                          <th className="px-6 py-3 font-medium w-10">
+                            <input 
+                              type="checkbox" 
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              checked={selectedGroup.memberIds.length > 0 && selectedUsers.length === selectedGroup.memberIds.length}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedUsers(selectedGroup.memberIds);
+                                } else {
+                                  setSelectedUsers([]);
+                                }
+                              }}
+                            />
+                          </th>
+                          )}
                           <th className="px-6 py-3 font-medium">User</th>
                           <th className="px-6 py-3 font-medium">Email</th>
                           <th className="px-6 py-3 font-medium">Role</th>
@@ -1175,7 +1179,27 @@ export default function AccessManagement() {
                       </thead>
                       <tbody className="divide-y divide-gray-200">
                         {users.filter(u => selectedGroup.memberIds.includes(u.id)).map(member => (
-                          <tr key={member.id} className="hover:bg-gray-50">
+                          <tr 
+                            key={member.id} 
+                            className={`hover:bg-gray-50 ${selectedUsers.includes(member.id) ? 'bg-blue-50/50' : ''}`}
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              if (currentUser?.role !== 'Member') {
+                                handleContextMenu(e, member.id);
+                              }
+                            }}
+                          >
+                            {currentUser?.role !== 'Member' && (
+                            <td className="px-6 py-4">
+                              <input 
+                                type="checkbox" 
+                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                checked={selectedUsers.includes(member.id)}
+                                onChange={() => handleSelectUser(member.id)}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </td>
+                            )}
                             <td className="px-6 py-4 font-medium text-gray-900">{member.name}</td>
                             <td className="px-6 py-4 text-gray-500">{member.email}</td>
                             <td className="px-6 py-4">
@@ -1212,27 +1236,12 @@ export default function AccessManagement() {
                         ))}
                         {selectedGroup.memberIds.length === 0 && (
                           <tr>
-                            <td colSpan={4} className="px-6 py-8 text-center text-gray-500">No members in this group</td>
+                            <td colSpan={currentUser?.role !== 'Member' ? 5 : 4} className="px-6 py-8 text-center text-gray-500">No members in this group</td>
                           </tr>
                         )}
                       </tbody>
                     </table>
                   </div>
-
-                  {selectedGroup.history && selectedGroup.history.length > 0 && (
-                    <div className="mt-8">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">History</h3>
-                      <div className="space-y-3">
-                        {selectedGroup.history.map((record, idx) => (
-                          <div key={idx} className="flex items-center text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-                            <span className="font-medium text-gray-900 mr-2">{record.user}</span>
-                            <span>was {record.action.toLowerCase()}</span>
-                            <span className="ml-auto text-gray-400 text-xs">{record.date}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             ) : (
@@ -1527,13 +1536,18 @@ export default function AccessManagement() {
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Add New User</h3>
               <button 
-                onClick={() => setIsAddingUser(false)}
+                onClick={() => { setIsAddingUser(false); setAddUserError(null); }}
                 className="text-gray-400 hover:text-gray-600"
               >
                 &times;
               </button>
             </div>
             <form onSubmit={handleAddUser} className="p-6 space-y-4">
+              {addUserError && (
+                <div className="p-3 bg-red-50 text-red-700 text-sm rounded-md border border-red-200">
+                  {addUserError}
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
                 <input 
@@ -1751,9 +1765,14 @@ export default function AccessManagement() {
             >
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">New Group</h3>
-              <button onClick={() => setIsAddingGroup(false)} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+              <button onClick={() => { setIsAddingGroup(false); setAddGroupError(null); }} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
             </div>
             <form onSubmit={handleAddGroup} className="p-6 space-y-4">
+              {addGroupError && (
+                <div className="p-3 bg-red-50 text-red-700 text-sm rounded-md border border-red-200">
+                  {addGroupError}
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Group Name</label>
                 <input type="text" value={newGroup.name} onChange={(e) => setNewGroup({...newGroup, name: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required placeholder="e.g. Engineering" />
@@ -2081,6 +2100,84 @@ export default function AccessManagement() {
         </motion.div>
       )}
       </AnimatePresence>
+
+      {/* Context Menu */}
+      {contextMenu && contextMenu.visible && (() => {
+        const selectedUserObjects = users.filter(u => selectedUsers.includes(u.id));
+        const hasAdminOrOrgAdminSelected = selectedUserObjects.some(u => u.role === 'Admin' || u.role === 'ORG Admin');
+        const isSelfSelected = selectedUserObjects.some(u => u.email === currentUser?.email);
+        
+        let canChangeRole = false;
+        if (currentUser?.role === 'Admin') {
+          canChangeRole = !isSelfSelected;
+        } else if (currentUser?.role === 'ORG Admin') {
+          canChangeRole = !hasAdminOrOrgAdminSelected && !isSelfSelected;
+        }
+
+        return (
+        <div 
+          className="fixed bg-white border border-gray-200 shadow-lg rounded-lg py-1 z-50 w-48"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="px-4 py-2 text-xs font-semibold text-gray-500 border-b border-gray-100 mb-1">
+            Selected: {selectedUsers.length} user(s)
+          </div>
+          
+          <div className="px-2 py-1">
+            <p className="px-2 py-1 text-xs font-medium text-gray-400 uppercase">Change Role</p>
+            {!canChangeRole ? (
+              <p className="px-2 py-2 text-xs text-amber-600 italic">
+                {isSelfSelected ? 'Cannot change your own role' : `Cannot change role for ${hasAdminOrOrgAdminSelected ? 'Admin/ORG Admin' : 'these users'}`}
+              </p>
+            ) : (
+              <>
+                {currentUser?.role === 'Admin' && (
+                  <button 
+                    onClick={() => handleChangeRole('Admin')}
+                    className="w-full text-left px-2 py-1.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md flex items-center gap-2"
+                  >
+                    <Shield size={14} /> Admin
+                  </button>
+                )}
+                <button 
+                  onClick={() => handleChangeRole('ORG Admin')}
+                  className="w-full text-left px-2 py-1.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md flex items-center gap-2"
+                >
+                  <ShieldCheck size={14} /> ORG Admin
+                </button>
+                <button 
+                  onClick={() => handleChangeRole('Member')}
+                  className="w-full text-left px-2 py-1.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md flex items-center gap-2"
+                >
+                  <UserCheck size={14} /> Member
+                </button>
+                <button 
+                  onClick={() => handleChangeRole('GUEST')}
+                  className="w-full text-left px-2 py-1.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md flex items-center gap-2"
+                >
+                  <Users size={14} /> GUEST
+                </button>
+              </>
+            )}
+          </div>
+
+          <div className="border-t border-gray-100 my-1"></div>
+          
+          <button 
+            onClick={handleRemoveSelectedUsers}
+            disabled={currentUser?.role === 'ORG Admin' && hasAdminOrOrgAdminSelected}
+            className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${
+              currentUser?.role === 'ORG Admin' && hasAdminOrOrgAdminSelected 
+                ? 'text-gray-300 cursor-not-allowed' 
+                : 'text-red-600 hover:bg-red-50'
+            }`}
+          >
+            <Trash2 size={14} /> Remove Selected Users
+          </button>
+        </div>
+        );
+      })()}
       </motion.div>
     </Layout>
   );

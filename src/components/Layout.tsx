@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutGrid, Ticket, User, LogOut as LogOutIcon, LogOut, Menu, X, ShieldAlert, Settings, Home as HomeIcon } from 'lucide-react';
+import { LayoutGrid, Ticket, User, LogOut as LogOutIcon, LogOut, Menu, X, ShieldAlert, Settings, Home as HomeIcon, FolderGit2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useIssues } from '../context/IssueContext';
 import { useAuth } from '../context/AuthContext';
@@ -78,6 +78,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </motion.div>
           </Link>
           )}
+          {user?.role !== 'GUEST' && (
           <Link to="/tickets">
             <motion.div 
               whileHover={{ scale: 1.02 }}
@@ -88,6 +89,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <span className="font-medium">Tickets</span>
             </motion.div>
           </Link>
+          )}
+          {user?.role === 'Admin' && (
+          <Link to="/projects">
+            <motion.div 
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors duration-200 ${isActive('/projects') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20' : 'text-slate-600 hover:bg-blue-50/80 hover:text-blue-700'}`}
+            >
+              <FolderGit2 size={20} className={isActive('/projects') ? 'text-white' : 'text-slate-500'} />
+              <span className="font-medium">Projects</span>
+            </motion.div>
+          </Link>
+          )}
+          {user?.role !== 'GUEST' && (
           <Link to="/access-management">
             <motion.div 
               whileHover={{ scale: 1.02 }}
@@ -95,9 +110,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors duration-200 ${isActive('/access-management') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20' : 'text-slate-600 hover:bg-blue-50/80 hover:text-blue-700'}`}
             >
               <ShieldAlert size={20} className={isActive('/access-management') ? 'text-white' : 'text-slate-500'} />
-              <span className="font-medium">Access Management</span>
+              <span className="font-medium">{user?.role === 'Admin' ? 'Access Management' : user?.group || 'Access Management'}</span>
             </motion.div>
           </Link>
+          )}
         </nav>
 
         <div className="p-4 border-t border-slate-200/60 bg-slate-50/50">
@@ -192,6 +208,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   <span className="font-medium">Dashboard</span>
                 </Link>
                 )}
+                {user?.role !== 'GUEST' && (
                 <Link 
                   to="/tickets" 
                   onClick={() => setIsMobileMenuOpen(false)}
@@ -200,14 +217,27 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   <Ticket size={20} className={isActive('/tickets') ? 'text-white' : 'text-slate-500'} />
                   <span className="font-medium">Tickets</span>
                 </Link>
+                )}
+                {user?.role === 'Admin' && (
+                <Link 
+                  to="/projects" 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 ${isActive('/projects') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20' : 'text-slate-600 hover:bg-blue-50/80 hover:text-blue-700 active:bg-blue-100'}`}
+                >
+                  <FolderGit2 size={20} className={isActive('/projects') ? 'text-white' : 'text-slate-500'} />
+                  <span className="font-medium">Projects</span>
+                </Link>
+                )}
+                {user?.role !== 'GUEST' && (
                 <Link 
                   to="/access-management" 
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 ${isActive('/access-management') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20' : 'text-slate-600 hover:bg-blue-50/80 hover:text-blue-700 active:bg-blue-100'}`}
                 >
                   <ShieldAlert size={20} className={isActive('/access-management') ? 'text-white' : 'text-slate-500'} />
-                  <span className="font-medium">Access Management</span>
+                  <span className="font-medium">{user?.role === 'Admin' ? 'Access Management' : user?.group || 'Access Management'}</span>
                 </Link>
+                )}
               </nav>
               
               <div className="p-4 border-t border-slate-200/60 bg-slate-50/50">

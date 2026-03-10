@@ -62,7 +62,7 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="max-w-full overflow-hidden">
+      <div className="w-full min-w-0">
         <div className="mb-8 flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700">

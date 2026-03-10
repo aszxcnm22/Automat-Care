@@ -3,10 +3,12 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Search, AlertCircle, CheckCircle2, Clock, ChevronUp, ChevronDown, Equal, FileText, FileArchive, File, Download, Eye, X, ExternalLink, FileSpreadsheet } from 'lucide-react';
 import Layout from '../components/Layout';
 import { useIssues, Issue } from '../context/IssueContext';
+import { useProjects } from '../context/ProjectContext';
 import { useAuth } from '../context/AuthContext';
 
 export default function Tickets() {
   const { issues, addIssue, userProfile } = useIssues();
+  const { projects } = useProjects();
   const { user } = useAuth();
   const [showNewIssue, setShowNewIssue] = useState(false);
   const [viewIssue, setViewIssue] = useState<Issue | null>(null);
@@ -205,7 +207,7 @@ export default function Tickets() {
 
   return (
     <Layout>
-      <div className="max-w-full overflow-hidden">
+      <div className="w-full min-w-0">
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -346,9 +348,9 @@ export default function Tickets() {
                     required
                   >
                     <option value="" disabled>Select a project</option>
-                    <option value="Website Redesign">Website Redesign</option>
-                    <option value="Mobile App Development">Mobile App Development</option>
-                    <option value="Database Migration">Database Migration</option>
+                    {projects.map(project => (
+                      <option key={project.id} value={project.name}>{project.name}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -440,7 +442,7 @@ export default function Tickets() {
                         )}
                       </div>
                       <p className="text-[10px] text-gray-400">
-                        Allowed: JPG, PNG, PDF, TXT, LOG, ZIP (Max 10MB)
+                        Allowed: JPG, PNG, PDF, TXT, LOG, ZIP, XLSX, CSV (Max 10MB)
                       </p>
                     </div>
                   </motion.div>
