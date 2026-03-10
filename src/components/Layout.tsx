@@ -10,31 +10,22 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { userProfile } = useIssues();
-<<<<<<< HEAD
   const { user, logout } = useAuth();
 
   const handleLogout = () => {
     logout();
-=======
-  const { user } = useAuth();
-
-  const handleLogout = () => {
->>>>>>> f68965de79608bcf583ed04950cb6c1203a75745
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userName');
     localStorage.removeItem('userProfilePic');
     navigate('/');
   };
 
-<<<<<<< HEAD
   React.useEffect(() => {
     if (!user && location.pathname !== '/login' && location.pathname !== '/register' && location.pathname !== '/forgot-password' && location.pathname !== '/') {
       navigate('/login');
     }
   }, [user, location.pathname, navigate]);
 
-=======
->>>>>>> f68965de79608bcf583ed04950cb6c1203a75745
   const isActive = (path: string) => location.pathname === path;
 
   const pageVariants = {
@@ -64,11 +55,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         
-<<<<<<< HEAD
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
-=======
-        <nav className="flex-1 p-4 space-y-2">
->>>>>>> f68965de79608bcf583ed04950cb6c1203a75745
           <Link to="/home">
             <motion.div 
               whileHover={{ scale: 1.02 }}
@@ -255,11 +242,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           )}
         </AnimatePresence>
 
-<<<<<<< HEAD
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 relative min-w-0">
-=======
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 relative">
->>>>>>> f68965de79608bcf583ed04950cb6c1203a75745
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}

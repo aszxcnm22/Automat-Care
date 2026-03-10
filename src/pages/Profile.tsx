@@ -33,18 +33,11 @@ export default function Profile() {
 
   return (
     <Layout>
-<<<<<<< HEAD
       <div className="max-w-full overflow-hidden">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">โปรไฟล์</h1>
           <p className="text-gray-500 text-sm mt-1">จัดการข้อมูลส่วนตัวของคุณ</p>
         </div>
-=======
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">โปรไฟล์</h1>
-        <p className="text-gray-500 text-sm mt-1">จัดการข้อมูลส่วนตัวของคุณ</p>
-      </div>
->>>>>>> f68965de79608bcf583ed04950cb6c1203a75745
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-8">
         {/* Header Banner */}
@@ -203,10 +196,7 @@ export default function Profile() {
           </div>
         </div>
       </div>
-<<<<<<< HEAD
       </div>
-=======
->>>>>>> f68965de79608bcf583ed04950cb6c1203a75745
     </Layout>
   );
 }

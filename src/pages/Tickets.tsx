@@ -1,10 +1,6 @@
 import React, { useState, FormEvent, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-<<<<<<< HEAD
 import { Plus, Search, AlertCircle, CheckCircle2, Clock, ChevronUp, ChevronDown, Equal, FileText, FileArchive, File, Download, Eye, X, ExternalLink, FileSpreadsheet } from 'lucide-react';
-=======
-import { Plus, Search, AlertCircle, CheckCircle2, Clock, ChevronUp, ChevronDown, Equal } from 'lucide-react';
->>>>>>> f68965de79608bcf583ed04950cb6c1203a75745
 import Layout from '../components/Layout';
 import { useIssues, Issue } from '../context/IssueContext';
 import { useAuth } from '../context/AuthContext';
@@ -14,7 +10,6 @@ export default function Tickets() {
   const { user } = useAuth();
   const [showNewIssue, setShowNewIssue] = useState(false);
   const [viewIssue, setViewIssue] = useState<Issue | null>(null);
-<<<<<<< HEAD
   const [viewAttachment, setViewAttachment] = useState<{ url: string; name: string; content?: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
@@ -55,11 +50,6 @@ export default function Tickets() {
     }
   };
 
-=======
-  const [viewImageUrl, setViewImageUrl] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  
->>>>>>> f68965de79608bcf583ed04950cb6c1203a75745
   const getCompanyNameFromEmail = (email: string) => {
     if (!email) return '';
     const domain = email.split('@')[1];
@@ -76,10 +66,7 @@ export default function Tickets() {
   const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0]);
   const [issueDesc, setIssueDesc] = useState('');
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
-<<<<<<< HEAD
   const [fileError, setFileError] = useState<string | null>(null);
-=======
->>>>>>> f68965de79608bcf583ed04950cb6c1203a75745
   const [attachment, setAttachment] = useState<File | null>(null);
   const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
 
@@ -97,7 +84,6 @@ export default function Tickets() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files ? e.target.files[0] : null;
-<<<<<<< HEAD
     setFileError(null);
 
     if (file) {
@@ -124,20 +110,13 @@ export default function Tickets() {
       }
 
       setAttachment(file);
-=======
-    setAttachment(file);
-    if (file) {
->>>>>>> f68965de79608bcf583ed04950cb6c1203a75745
       const reader = new FileReader();
       reader.onloadend = () => {
         setAttachmentUrl(reader.result as string);
       };
       reader.readAsDataURL(file);
     } else {
-<<<<<<< HEAD
       setAttachment(null);
-=======
->>>>>>> f68965de79608bcf583ed04950cb6c1203a75745
       setAttachmentUrl(null);
     }
   };
@@ -226,20 +205,12 @@ export default function Tickets() {
 
   return (
     <Layout>
-<<<<<<< HEAD
       <div className="max-w-full overflow-hidden">
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8"
         >
-=======
-      <motion.div 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8"
-      >
->>>>>>> f68965de79608bcf583ed04950cb6c1203a75745
         <div>
           <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700">Ticket Board</h1>
           <p className="text-slate-500 text-sm mt-1">Manage and track your reported issues.</p>
@@ -275,11 +246,7 @@ export default function Tickets() {
             />
           </div>
         </div>
-<<<<<<< HEAD
         <div className="overflow-x-auto custom-scrollbar">
-=======
-        <div className="overflow-x-auto">
->>>>>>> f68965de79608bcf583ed04950cb6c1203a75745
           <table className="w-full text-left text-sm">
             <thead className="bg-gray-50 text-gray-500 border-b border-gray-200">
               <tr>
@@ -342,15 +309,9 @@ export default function Tickets() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: "spring", duration: 0.5 }}
-<<<<<<< HEAD
               className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col"
             >
               <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between shrink-0">
-=======
-              className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden"
-            >
-              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
->>>>>>> f68965de79608bcf583ed04950cb6c1203a75745
                 <h3 className="text-lg font-semibold text-gray-900">Report New Issue</h3>
                 <button 
                   onClick={() => setShowNewIssue(false)}
@@ -359,11 +320,7 @@ export default function Tickets() {
                   &times;
                 </button>
               </div>
-<<<<<<< HEAD
               <form onSubmit={handleSubmitIssue} className="p-6 space-y-4 overflow-y-auto">
-=======
-              <form onSubmit={handleSubmitIssue} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
->>>>>>> f68965de79608bcf583ed04950cb6c1203a75745
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Company Name <span className="text-red-500">*</span>
@@ -424,14 +381,10 @@ export default function Tickets() {
                   <input 
                     type="tel" 
                     value={contactPhone}
-<<<<<<< HEAD
                     onChange={(e) => {
                       const value = e.target.value.replace(/[^0-9]/g, '');
                       setContactPhone(value);
                     }}
-=======
-                    onChange={(e) => setContactPhone(e.target.value)}
->>>>>>> f68965de79608bcf583ed04950cb6c1203a75745
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
                     required
                   />
@@ -467,7 +420,6 @@ export default function Tickets() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Attachment</label>
                   <motion.div 
                     whileHover={{ backgroundColor: "rgba(249, 250, 251, 1)" }}
-<<<<<<< HEAD
                     className={`border-2 border-dashed rounded-md p-4 text-center transition-colors cursor-pointer relative ${fileError ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
                   >
                     <input 
@@ -495,26 +447,6 @@ export default function Tickets() {
                   {fileError && (
                     <p className="mt-1 text-xs text-red-600 font-medium">{fileError}</p>
                   )}
-=======
-                    className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center transition-colors cursor-pointer relative"
-                  >
-                    <input 
-                      type="file" 
-                      onChange={handleFileChange}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    />
-                    <div className="flex items-center justify-center gap-2 text-gray-500 text-sm">
-                      {attachment ? (
-                        <span className="text-blue-600 font-medium">{attachment.name}</span>
-                      ) : (
-                        <>
-                          <span>Drop file to upload here</span>
-                          <Plus size={16} />
-                        </>
-                      )}
-                    </div>
-                  </motion.div>
->>>>>>> f68965de79608bcf583ed04950cb6c1203a75745
                 </div>
 
                 <div className="pt-4 flex justify-end gap-3">
@@ -549,7 +481,6 @@ export default function Tickets() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: "spring", duration: 0.5 }}
-<<<<<<< HEAD
               className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col"
             >
               <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-gray-50/50">
@@ -569,20 +500,6 @@ export default function Tickets() {
                 </div>
               </div>
               <div className="p-6 space-y-4 overflow-y-auto">
-=======
-              className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden"
-            >
-              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">Ticket Details</h3>
-                <button 
-                  onClick={() => setViewIssue(null)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  &times;
-                </button>
-              </div>
-              <div className="p-6 space-y-4">
->>>>>>> f68965de79608bcf583ed04950cb6c1203a75745
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="text-sm text-gray-500 font-medium">{viewIssue.id}</p>
@@ -619,7 +536,6 @@ export default function Tickets() {
                     <p className="text-sm text-gray-500">Date of Issue</p>
                     <p className="font-medium text-gray-900">{viewIssue.issueDate || '-'}</p>
                   </div>
-<<<<<<< HEAD
                 </div>
 
                 <div className="mt-6">
@@ -709,33 +625,6 @@ export default function Tickets() {
                 </div>
 
                 <div className="mt-6">
-=======
-                  <div>
-                    <p className="text-sm text-gray-500">Attachment</p>
-                    {viewIssue.attachment ? (
-                      <a 
-                        href="#" 
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (viewIssue.attachmentUrl) {
-                            setViewImageUrl(viewIssue.attachmentUrl);
-                          } else {
-                            // For mock issues without a real URL, show a placeholder
-                            setViewImageUrl('https://picsum.photos/seed/attachment/800/600');
-                          }
-                        }} 
-                        className="font-medium text-blue-600 hover:underline break-all inline-block"
-                      >
-                        {viewIssue.attachment}
-                      </a>
-                    ) : (
-                      <p className="font-medium text-gray-900">-</p>
-                    )}
-                  </div>
-                </div>
-
-                <div>
->>>>>>> f68965de79608bcf583ed04950cb6c1203a75745
                   <p className="text-sm text-gray-500 mb-1">Description</p>
                   <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-700 min-h-[100px]">
                     {viewIssue.description || 'No description provided.'}
@@ -756,7 +645,6 @@ export default function Tickets() {
         )}
       </AnimatePresence>
 
-<<<<<<< HEAD
       {/* Attachment Preview Modal (Jira Style Media Viewer) */}
       <AnimatePresence>
         {viewAttachment && (
@@ -890,43 +778,11 @@ export default function Tickets() {
                   );
                 })()}
               </div>
-=======
-      {/* Image Modal */}
-      <AnimatePresence>
-        {viewImageUrl && (
-          <div 
-            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
-            onClick={() => setViewImageUrl(null)}
-          >
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ type: "spring", duration: 0.3 }}
-              className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center justify-center"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button 
-                onClick={() => setViewImageUrl(null)}
-                className="absolute -top-12 right-0 text-white hover:text-gray-300 p-2"
-              >
-                <span className="text-3xl">&times;</span>
-              </button>
-              <img 
-                src={viewImageUrl} 
-                alt="Attachment Preview" 
-                className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
-                referrerPolicy="no-referrer"
-              />
->>>>>>> f68965de79608bcf583ed04950cb6c1203a75745
             </motion.div>
           </div>
         )}
       </AnimatePresence>
-<<<<<<< HEAD
       </div>
-=======
->>>>>>> f68965de79608bcf583ed04950cb6c1203a75745
     </Layout>
   );
 }

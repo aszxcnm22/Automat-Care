@@ -19,14 +19,10 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-<<<<<<< HEAD
   const [user, setUser] = useState<User | null>(() => {
     const savedUser = localStorage.getItem('auth_user');
     return savedUser ? JSON.parse(savedUser) : null;
   });
-=======
-  const [user, setUser] = useState<User | null>(null);
->>>>>>> f68965de79608bcf583ed04950cb6c1203a75745
 
   const login = (email: string, password?: string) => {
     let mockUser: User | null = null;
@@ -61,18 +57,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             group: 'Global Tech Holdings Company',
         };
     }
-<<<<<<< HEAD
 
     if (mockUser) {
         setUser(mockUser);
         localStorage.setItem('auth_user', JSON.stringify(mockUser));
-=======
-    // Fallback for quick testing if needed (optional, but good to keep strict based on request)
-    // Removing loose checks to strictly follow the requested credentials.
-
-    if (mockUser) {
-        setUser(mockUser);
->>>>>>> f68965de79608bcf583ed04950cb6c1203a75745
         return true;
     }
     return false;
@@ -80,10 +68,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = () => {
     setUser(null);
-<<<<<<< HEAD
     localStorage.removeItem('auth_user');
-=======
->>>>>>> f68965de79608bcf583ed04950cb6c1203a75745
   };
 
   return (
