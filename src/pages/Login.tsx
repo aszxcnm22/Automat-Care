@@ -71,13 +71,6 @@ export default function Login() {
           {/* Form */}
           <div className="w-full max-w-md">
             <h1 className="text-3xl font-medium mb-8">Login</h1>
-            
-            <div className="grid grid-cols-3 gap-2 mb-6">
-                <button onClick={() => handleQuickLogin('Admin')} className="px-2 py-1 bg-red-500/80 hover:bg-red-600 text-xs rounded text-white">Login as Admin</button>
-                <button onClick={() => handleQuickLogin('ORG Admin')} className="px-2 py-1 bg-blue-500/80 hover:bg-blue-600 text-xs rounded text-white">Login as ORG Admin</button>
-                <button onClick={() => handleQuickLogin('Member')} className="px-2 py-1 bg-green-500/80 hover:bg-green-600 text-xs rounded text-white">Login as Member</button>
-            </div>
-
             <form onSubmit={handleLogin} className="space-y-5">
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-white/90">Email</label>
